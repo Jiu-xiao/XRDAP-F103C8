@@ -25,7 +25,7 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 #  "STARM_HYBRID"   : Hybrid configuration using starm-clang Assemler and Compiler and GNU Linker
 #  "STARM_NEWLIB"   : starm-clang toolchain with NEWLIB C library
 #  "STARM_PICOLIBC" : starm-clang toolchain with PICOLIBC C library
-set(STARM_TOOLCHAIN_CONFIG "STARM_HYBRID")
+set(STARM_TOOLCHAIN_CONFIG "STARM_PICOLIBC")
 
 if(STARM_TOOLCHAIN_CONFIG STREQUAL "STARM_HYBRID")
   set(TOOLCHAIN_MULTILIBS "--multi-lib-config=\"$ENV{CLANG_GCC_CMSIS_COMPILER}/multilib.gnu_tools_for_stm32.yaml\" --gcc-toolchain=\"$ENV{GCC_TOOLCHAIN_ROOT}/..\"")
