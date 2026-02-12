@@ -4,28 +4,13 @@ software_timer:
   stack_depth: 1024
 USART:
   usart2:
-    tx_buffer_size: 128
-    rx_buffer_size: 128
+    tx_buffer_size: 2048
+    rx_buffer_size: 2048
     dma_section: ''
     tx_queue_size: 5
 USB:
   usb_fs:
     enable: false
-    ep0_packet_size: 8
-    tx_buffer_size: 128
-    rx_buffer_size: 128
-    rx_fifo_size: 128
-    tx_fifo_size: 128
-    dma_section: ''
-    cdc_tx_fifo_size: 128
-    cdc_rx_fifo_size: 128
-    cdc_queue_size: 3
-    vid: 7504
-    pid: 24985
-    bcd: 256
-    manufacturer: XRobot
-    product: STM32 XRUSB USB CDC Demo
-    serial: XRUSB-DEMO-
 Terminal:
   read_buff_size: 32
   max_line_size: 32

@@ -43,8 +43,8 @@ extern TIM_HandleTypeDef htim1;
 extern UART_HandleTypeDef huart2;
 
 /* DMA Resources */
-static uint8_t usart2_tx_buf[128];
-static uint8_t usart2_rx_buf[128];
+static uint8_t usart2_tx_buf[2048];
+static uint8_t usart2_rx_buf[2048];
 
 extern "C" void app_main(void) {
   // clang-format on
