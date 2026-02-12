@@ -1,0 +1,23 @@
+name: xrobot stm32 build test
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/xrobot-org/docker-image-stm32:main
+      options: --user 0
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: init submodule
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE" && git submodule update --init --recursive
+      - name: config cmake
+        run: export GCC_TOOLCHAIN_ROOT=/opt/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi/bin && export CLANG_GCC_CMSIS_COMPILER=/opt/st-arm-clang && cmake . -DCMAKE_TOOLCHAIN_FILE:STRING=cmake/starm-clang.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE -Bbuild -G Ninja
+      - name: build
+        run: cmake --build build

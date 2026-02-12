@@ -1,0 +1,231 @@
+terminal_source: ''
+software_timer:
+  priority: 2
+  stack_depth: 1024
+USART:
+  usart2:
+    tx_buffer_size: 128
+    rx_buffer_size: 128
+    dma_section: ''
+    tx_queue_size: 5
+USB:
+  usb_fs:
+    enable: false
+    ep0_packet_size: 8
+    tx_buffer_size: 128
+    rx_buffer_size: 128
+    rx_fifo_size: 128
+    tx_fifo_size: 128
+    dma_section: ''
+    cdc_tx_fifo_size: 128
+    cdc_rx_fifo_size: 128
+    cdc_queue_size: 3
+    vid: 7504
+    pid: 24985
+    bcd: 256
+    manufacturer: XRobot
+    product: STM32 XRUSB USB CDC Demo
+    serial: XRUSB-DEMO-
+Terminal:
+  read_buff_size: 32
+  max_line_size: 32
+  max_arg_number: 5
+  max_history_number: 5
+SYSTEM: None
+FlashLayout:
+  model: STM32F103C8T6
+  flash_base: '0x08000000'
+  flash_size_kb: 64
+  sectors:
+  - index: 0
+    address: '0x08000000'
+    size_kb: 1.0
+  - index: 1
+    address: '0x08000400'
+    size_kb: 1.0
+  - index: 2
+    address: '0x08000800'
+    size_kb: 1.0
+  - index: 3
+    address: '0x08000C00'
+    size_kb: 1.0
+  - index: 4
+    address: '0x08001000'
+    size_kb: 1.0
+  - index: 5
+    address: '0x08001400'
+    size_kb: 1.0
+  - index: 6
+    address: '0x08001800'
+    size_kb: 1.0
+  - index: 7
+    address: '0x08001C00'
+    size_kb: 1.0
+  - index: 8
+    address: '0x08002000'
+    size_kb: 1.0
+  - index: 9
+    address: '0x08002400'
+    size_kb: 1.0
+  - index: 10
+    address: '0x08002800'
+    size_kb: 1.0
+  - index: 11
+    address: '0x08002C00'
+    size_kb: 1.0
+  - index: 12
+    address: '0x08003000'
+    size_kb: 1.0
+  - index: 13
+    address: '0x08003400'
+    size_kb: 1.0
+  - index: 14
+    address: '0x08003800'
+    size_kb: 1.0
+  - index: 15
+    address: '0x08003C00'
+    size_kb: 1.0
+  - index: 16
+    address: '0x08004000'
+    size_kb: 1.0
+  - index: 17
+    address: '0x08004400'
+    size_kb: 1.0
+  - index: 18
+    address: '0x08004800'
+    size_kb: 1.0
+  - index: 19
+    address: '0x08004C00'
+    size_kb: 1.0
+  - index: 20
+    address: '0x08005000'
+    size_kb: 1.0
+  - index: 21
+    address: '0x08005400'
+    size_kb: 1.0
+  - index: 22
+    address: '0x08005800'
+    size_kb: 1.0
+  - index: 23
+    address: '0x08005C00'
+    size_kb: 1.0
+  - index: 24
+    address: '0x08006000'
+    size_kb: 1.0
+  - index: 25
+    address: '0x08006400'
+    size_kb: 1.0
+  - index: 26
+    address: '0x08006800'
+    size_kb: 1.0
+  - index: 27
+    address: '0x08006C00'
+    size_kb: 1.0
+  - index: 28
+    address: '0x08007000'
+    size_kb: 1.0
+  - index: 29
+    address: '0x08007400'
+    size_kb: 1.0
+  - index: 30
+    address: '0x08007800'
+    size_kb: 1.0
+  - index: 31
+    address: '0x08007C00'
+    size_kb: 1.0
+  - index: 32
+    address: '0x08008000'
+    size_kb: 1.0
+  - index: 33
+    address: '0x08008400'
+    size_kb: 1.0
+  - index: 34
+    address: '0x08008800'
+    size_kb: 1.0
+  - index: 35
+    address: '0x08008C00'
+    size_kb: 1.0
+  - index: 36
+    address: '0x08009000'
+    size_kb: 1.0
+  - index: 37
+    address: '0x08009400'
+    size_kb: 1.0
+  - index: 38
+    address: '0x08009800'
+    size_kb: 1.0
+  - index: 39
+    address: '0x08009C00'
+    size_kb: 1.0
+  - index: 40
+    address: '0x0800A000'
+    size_kb: 1.0
+  - index: 41
+    address: '0x0800A400'
+    size_kb: 1.0
+  - index: 42
+    address: '0x0800A800'
+    size_kb: 1.0
+  - index: 43
+    address: '0x0800AC00'
+    size_kb: 1.0
+  - index: 44
+    address: '0x0800B000'
+    size_kb: 1.0
+  - index: 45
+    address: '0x0800B400'
+    size_kb: 1.0
+  - index: 46
+    address: '0x0800B800'
+    size_kb: 1.0
+  - index: 47
+    address: '0x0800BC00'
+    size_kb: 1.0
+  - index: 48
+    address: '0x0800C000'
+    size_kb: 1.0
+  - index: 49
+    address: '0x0800C400'
+    size_kb: 1.0
+  - index: 50
+    address: '0x0800C800'
+    size_kb: 1.0
+  - index: 51
+    address: '0x0800CC00'
+    size_kb: 1.0
+  - index: 52
+    address: '0x0800D000'
+    size_kb: 1.0
+  - index: 53
+    address: '0x0800D400'
+    size_kb: 1.0
+  - index: 54
+    address: '0x0800D800'
+    size_kb: 1.0
+  - index: 55
+    address: '0x0800DC00'
+    size_kb: 1.0
+  - index: 56
+    address: '0x0800E000'
+    size_kb: 1.0
+  - index: 57
+    address: '0x0800E400'
+    size_kb: 1.0
+  - index: 58
+    address: '0x0800E800'
+    size_kb: 1.0
+  - index: 59
+    address: '0x0800EC00'
+    size_kb: 1.0
+  - index: 60
+    address: '0x0800F000'
+    size_kb: 1.0
+  - index: 61
+    address: '0x0800F400'
+    size_kb: 1.0
+  - index: 62
+    address: '0x0800F800'
+    size_kb: 1.0
+  - index: 63
+    address: '0x0800FC00'
+    size_kb: 1.0
