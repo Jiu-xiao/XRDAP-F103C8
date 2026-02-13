@@ -3,7 +3,6 @@ name: xrobot stm32 build test
 on:
   push:
     branches: ["main", "master"]
-    tags: ["*"]
   pull_request:
     branches: ["main", "master"]
 
@@ -86,12 +85,20 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
     needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - name: release metadata
+        id: meta
+        shell: sh
+        run: |
+          DATE_UTC="$(date -u +'%Y-%m-%d')"
+          SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
+          echo "release_name=${DATE_UTC}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=release-${DATE_UTC}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
       - name: download firmware artifact
         uses: actions/download-artifact@v4
         with:
@@ -100,6 +107,9 @@ jobs:
       - name: publish release
         uses: softprops/action-gh-release@v2
         with:
+          name: ${{ steps.meta.outputs.release_name }}
+          tag_name: ${{ steps.meta.outputs.tag_name }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: true
           files: |
             dist/*.elf

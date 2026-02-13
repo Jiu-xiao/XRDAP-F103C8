@@ -39,7 +39,7 @@ target_sources(${CMAKE_PROJECT_NAME}
     PRIVATE ${LIBXR_USER_SOURCES}
 )
 
-target_compile_options(xr PRIVATE -O2)
+target_compile_options(xr PRIVATE -Os)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Og)
