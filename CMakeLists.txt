@@ -20,7 +20,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Set the project name
-set(CMAKE_PROJECT_NAME F103_TEST)
+set(CMAKE_PROJECT_NAME XRDAP_F103C8)
 
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
@@ -34,6 +34,7 @@ enable_language(C ASM)
 
 # Create an executable object type
 add_executable(${CMAKE_PROJECT_NAME})
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME "XRDAP-F103C8")
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
