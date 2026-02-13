@@ -68,7 +68,10 @@ jobs:
           fi
 
           PKG_TAG="${GITHUB_REF_NAME:-snapshot}"
-          (cd dist && tar -czf "${FW_NAME}-${PKG_TAG}.tar.gz" --exclude='*.tar.gz' .)
+          PKG_NAME="${FW_NAME}-${PKG_TAG}.tar.gz"
+          TMP_PKG="${RUNNER_TEMP:-/tmp}/${PKG_NAME}"
+          tar -C dist --exclude='*.tar.gz' -czf "${TMP_PKG}" .
+          mv "${TMP_PKG}" "dist/${PKG_NAME}"
 
       - name: upload firmware artifact
         uses: actions/upload-artifact@v4
