@@ -27,6 +27,10 @@
     {
       "name": "jlink-gdbserver",
       "version": "8.80.0+st.1"
+    },
+    {
+      "name": "st-arm-clang-hybrid",
+      "version": "19.1.6+st.3"
     }
   ]
 }

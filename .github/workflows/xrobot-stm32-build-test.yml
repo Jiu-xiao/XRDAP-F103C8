@@ -24,6 +24,7 @@ jobs:
           export CLANG_GCC_CMSIS_COMPILER=/opt/st-arm-clang
           cmake . \
             -DCMAKE_TOOLCHAIN_FILE:STRING=cmake/starm-clang.cmake \
+            -DCMAKE_BUILD_TYPE:STRING=Release \
             -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \
             -DCMAKE_COMPILE_WARNING_AS_ERROR:BOOL=OFF \
             -DCMAKE_C_FLAGS:STRING="-Wno-error" \

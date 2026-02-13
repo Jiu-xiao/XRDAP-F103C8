@@ -2,5 +2,5 @@
   "device": "STM32F103C8T6",
   "core": "Cortex-M3",
   "order": 0,
-  "toolchain": "GCC"
+  "toolchain": "CLANG_GCC"
 }
