@@ -40,11 +40,8 @@ static uint8_t usb_fs_ep3_out_buf[128];
 /* External HAL Declarations */
 extern PCD_HandleTypeDef hpcd_USB_FS;
 extern TIM_HandleTypeDef htim1;
-extern UART_HandleTypeDef huart2;
 
-/* DMA Resources */
-static uint8_t usart2_tx_buf[2048];
-static uint8_t usart2_rx_buf[2048];
+/* No DMA Resources generated. */
 
 extern "C" void app_main(void) {
   // clang-format on
@@ -66,8 +63,6 @@ extern "C" void app_main(void) {
 
   STM32PWM pwm_tim1_ch2(&htim1, TIM_CHANNEL_2, false);
 
-  STM32UART usart2(&huart2,
-              usart2_rx_buf, usart2_tx_buf, 5);
 
   /* Terminal Configuration */
 
@@ -79,7 +74,7 @@ extern "C" void app_main(void) {
           LibXR::USB::DescriptorStrings::Language::EN_US, "XRobot", "CMSIS-DAP",
           "XRUSB-DEMO-XRDAP-");
 
-  LibXR::USB::CDCToUart usb_fs_cdc(usart2, 128, 128, 3);
+  LibXR::USB::CDCUart usb_fs_cdc(128, 128, 3);
   LibXR::Debug::SwdGeneralGPIO swd_gpio(SWCLK, SWDIO, 7);
   LibXR::USB::DapLinkV2Class daplink(swd_gpio, &NRST);
 
@@ -98,7 +93,7 @@ extern "C" void app_main(void) {
   pwm_tim1_ch2.SetConfig({.frequency = 10000});
   pwm_tim1_ch2.SetDutyCycle(0.0f);
   pwm_tim1_ch2.Enable();
-  static constexpr float step = 0.1f;
+  static constexpr float step = 0.003f;
   while (true) {
     if (daplink.EpInBusy()) {
       busy = busy * (1.0f - step) + 1.0f * step;

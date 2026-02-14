@@ -6,51 +6,40 @@ on:
   pull_request:
     branches: ["main", "master"]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/xrobot-org/docker-image-stm32:main
       options: --user 0
-
+    env:
+      GCC_TOOLCHAIN_ROOT: /opt/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi/bin
+      CLANG_GCC_CMSIS_COMPILER: /opt/st-arm-clang
     steps:
       - uses: actions/checkout@v4
-      - name: init submodule
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE" && git submodule update --init --recursive
-      - name: config cmake
+        with:
+          submodules: recursive
+
+      - name: mark workspace safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: configure cmake
         run: |
-          export GCC_TOOLCHAIN_ROOT=/opt/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi/bin
-          export CLANG_GCC_CMSIS_COMPILER=/opt/st-arm-clang
-          cmake . \
+          cmake -S . -B build -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE:STRING=cmake/starm-clang.cmake \
-            -DCMAKE_BUILD_TYPE:STRING=Release \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \
-            -DCMAKE_COMPILE_WARNING_AS_ERROR:BOOL=OFF \
-            -DCMAKE_C_FLAGS:STRING="-Wno-error" \
-            -DCMAKE_CXX_FLAGS:STRING="-Wno-error -Wno-register -Wno-error=register" \
-            -Bbuild -G Ninja
+            -DCMAKE_BUILD_TYPE:STRING=Release
+
       - name: build
-        run: cmake --build build
+        run: cmake --build build --parallel
+
       - name: package firmware
-        id: package
-        shell: sh
+        shell: bash
         run: |
-          set -e
+          set -euo pipefail
           mkdir -p dist
-
-          ELF_PATH="$(find build -type f -name '*.elf' | head -n 1)"
-          if [ -z "$ELF_PATH" ]; then
-            echo "No .elf firmware found under build/"
-            exit 1
-          fi
-
-          FW_NAME="$(basename "$ELF_PATH" .elf)"
-          cp "$ELF_PATH" "dist/${FW_NAME}.elf"
-
-          MAP_PATH="$(find build -type f -name '*.map' | head -n 1 || true)"
-          if [ -n "$MAP_PATH" ]; then
-            cp "$MAP_PATH" "dist/${FW_NAME}.map"
-          fi
 
           OBJCOPY_BIN=""
           if command -v starm-objcopy >/dev/null 2>&1; then
@@ -59,15 +48,32 @@ jobs:
             OBJCOPY_BIN="arm-none-eabi-objcopy"
           fi
 
-          if [ -n "$OBJCOPY_BIN" ]; then
-            "$OBJCOPY_BIN" -O ihex "$ELF_PATH" "dist/${FW_NAME}.hex"
-            "$OBJCOPY_BIN" -O binary "$ELF_PATH" "dist/${FW_NAME}.bin"
-          else
-            echo "objcopy not found, skip generating .hex/.bin"
-          fi
+          for MODE in 72m 96m; do
+            FW_DIR="build/XRDAP_F103C8_clock_${MODE}"
+            ELF_PATH="${FW_DIR}/XRDAP-F103C8.elf"
+            MAP_PATH="${FW_DIR}/XRDAP-F103C8.map"
+            FW_NAME="XRDAP-F103C8-${MODE}"
+
+            if [ ! -f "$ELF_PATH" ]; then
+              echo "Missing firmware: $ELF_PATH"
+              exit 1
+            fi
+
+            cp "$ELF_PATH" "dist/${FW_NAME}.elf"
+            if [ -f "$MAP_PATH" ]; then
+              cp "$MAP_PATH" "dist/${FW_NAME}.map"
+            fi
+
+            if [ -n "$OBJCOPY_BIN" ]; then
+              "$OBJCOPY_BIN" -O ihex "$ELF_PATH" "dist/${FW_NAME}.hex"
+              "$OBJCOPY_BIN" -O binary "$ELF_PATH" "dist/${FW_NAME}.bin"
+            else
+              echo "objcopy not found, skip generating .hex/.bin for ${FW_NAME}"
+            fi
+          done
 
           PKG_TAG="${GITHUB_REF_NAME:-snapshot}"
-          PKG_NAME="${FW_NAME}-${PKG_TAG}.tar.gz"
+          PKG_NAME="XRDAP-F103C8-${PKG_TAG}.tar.gz"
           TMP_PKG="${RUNNER_TEMP:-/tmp}/${PKG_NAME}"
           tar -C dist --exclude='*.tar.gz' -czf "${TMP_PKG}" .
           mv "${TMP_PKG}" "dist/${PKG_NAME}"
@@ -85,7 +91,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -93,17 +99,19 @@ jobs:
     steps:
       - name: release metadata
         id: meta
-        shell: sh
+        shell: bash
         run: |
           DATE_UTC="$(date -u +'%Y-%m-%d')"
           SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
           echo "release_name=${DATE_UTC}" >> "$GITHUB_OUTPUT"
           echo "tag_name=release-${DATE_UTC}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
       - name: download firmware artifact
         uses: actions/download-artifact@v4
         with:
           name: firmware-${{ github.sha }}
           path: dist
+
       - name: publish release
         uses: softprops/action-gh-release@v2
         with:

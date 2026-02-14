@@ -31,6 +31,20 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define XR_CLOCK_MODE_72M 72
+#define XR_CLOCK_MODE_96M 96
+
+#ifndef XR_CLOCK_MODE
+#define XR_CLOCK_MODE XR_CLOCK_MODE_72M
+#endif
+
+/* APM32F103 extends USB prescaler to 2-bit USBDPSC[23:22]. */
+#ifndef RCC_CFGR_USBDPSC
+#define RCC_CFGR_USBDPSC (0x3UL << 22)
+#endif
+#define RCC_CFGR_USBDPSC_DIV_1_5 (0x0UL << 22)
+#define RCC_CFGR_USBDPSC_DIV_1   (0x1UL << 22)
+#define RCC_CFGR_USBDPSC_DIV_2   (0x2UL << 22)
 
 /* USER CODE END PD */
 
@@ -42,10 +56,6 @@
 /* Private variables ---------------------------------------------------------*/
 TIM_HandleTypeDef htim1;
 
-UART_HandleTypeDef huart2;
-DMA_HandleTypeDef hdma_usart2_rx;
-DMA_HandleTypeDef hdma_usart2_tx;
-
 PCD_HandleTypeDef hpcd_USB_FS;
 
 /* USER CODE BEGIN PV */
@@ -55,16 +65,61 @@ PCD_HandleTypeDef hpcd_USB_FS;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_DMA_Init(void);
 static void MX_USB_PCD_Init(void);
-static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
+static void XR_ApplyClockProfile(void);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static void XR_ApplyClockProfile(void)
+{
+#if (XR_CLOCK_MODE == XR_CLOCK_MODE_72M)
+  MODIFY_REG(RCC->CFGR, RCC_CFGR_USBDPSC, RCC_CFGR_USBDPSC_DIV_1_5);
+#elif (XR_CLOCK_MODE == XR_CLOCK_MODE_96M)
+  MODIFY_REG(FLASH->ACR, FLASH_ACR_LATENCY, 2U);
+  while ((FLASH->ACR & FLASH_ACR_LATENCY) != 2U)
+  {
+  }
+  SET_BIT(FLASH->ACR, FLASH_ACR_PRFTBE);
+
+  LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_HSE);
+  while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSE)
+  {
+  }
+
+  LL_RCC_PLL_Disable();
+  while (LL_RCC_PLL_IsReady() != 0)
+  {
+  }
+
+  LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSE_DIV_1, LL_RCC_PLL_MUL_12);
+  LL_RCC_PLL_Enable();
+  while (LL_RCC_PLL_IsReady() != 1)
+  {
+  }
+
+  LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
+  LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_2);
+  LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_1);
+  LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL);
+  while (LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL)
+  {
+  }
+
+  LL_SetSystemCoreClock(96000000);
+  if (HAL_InitTick(TICK_INT_PRIORITY) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  MODIFY_REG(RCC->CFGR, RCC_CFGR_USBDPSC, RCC_CFGR_USBDPSC_DIV_2);
+#else
+#error "Unsupported XR_CLOCK_MODE value."
+#endif
+}
 
 /* USER CODE END 0 */
 
@@ -92,14 +147,13 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
+  XR_ApplyClockProfile();
 
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_DMA_Init();
   MX_USB_PCD_Init();
-  MX_USART2_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   app_main();
@@ -226,39 +280,6 @@ static void MX_TIM1_Init(void)
 }
 
 /**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART2_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART2_Init 0 */
-
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
-  huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
-  huart2.Init.WordLength = UART_WORDLENGTH_8B;
-  huart2.Init.StopBits = UART_STOPBITS_1;
-  huart2.Init.Parity = UART_PARITY_NONE;
-  huart2.Init.Mode = UART_MODE_TX_RX;
-  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART2_Init 2 */
-
-  /* USER CODE END USART2_Init 2 */
-
-}
-
-/**
   * @brief USB Initialization Function
   * @param None
   * @retval None
@@ -290,25 +311,6 @@ static void MX_USB_PCD_Init(void)
 }
 
 /**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
-
-  /* DMA interrupt init */
-  /* DMA1_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
-  /* DMA1_Channel7_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel7_IRQn);
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -322,8 +324,8 @@ static void MX_GPIO_Init(void)
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOD_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
+  __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, SWCLK_Pin|SWDIO_Pin|NRST_Pin, GPIO_PIN_RESET);
