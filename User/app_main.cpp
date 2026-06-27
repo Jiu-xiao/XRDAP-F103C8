@@ -11,7 +11,6 @@
 #include "stm32_gpio.hpp"
 #include "stm32_i2c.hpp"
 #include "stm32_power.hpp"
-#include "stm32_pwm.hpp"
 #include "stm32_spi.hpp"
 #include "stm32_timebase.hpp"
 #include "stm32_uart.hpp"
@@ -43,6 +42,52 @@ extern TIM_HandleTypeDef htim1;
 
 /* No DMA Resources generated. */
 
+static bool XR_ConfigTim1Ch2Pwm(TIM_HandleTypeDef* htim, uint32_t target_freq) {
+  if (target_freq == 0u) {
+    return false;
+  }
+
+  uint32_t clock_freq = HAL_RCC_GetPCLK2Freq();
+#ifdef RCC_CFGR_PPRE2
+  if ((RCC->CFGR & RCC_CFGR_PPRE2) != RCC_CFGR_PPRE2_DIV1) {
+    clock_freq *= 2u;
+  }
+#endif
+
+  uint32_t prescaler = 1u;
+  uint32_t period = 0u;
+  bool found = false;
+
+  for (prescaler = 1u; prescaler <= 0xFFFFu; ++prescaler) {
+    uint32_t temp_period = clock_freq / (prescaler * target_freq);
+    if (temp_period > 0u && temp_period <= 0x10000u) {
+      period = temp_period;
+      found = true;
+      break;
+    }
+  }
+
+  if (!found || period == 0u) {
+    return false;
+  }
+
+  htim->Init.Prescaler = prescaler - 1u;
+  htim->Init.Period = period - 1u;
+  if (HAL_TIM_PWM_Init(htim) != HAL_OK) {
+    return false;
+  }
+
+  TIM_OC_InitTypeDef sConfigOC = {0};
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0u;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  return HAL_TIM_PWM_ConfigChannel(htim, &sConfigOC, TIM_CHANNEL_2) == HAL_OK;
+}
+
 extern "C" void app_main(void) {
   // clang-format on
   // NOLINTEND
@@ -59,11 +104,6 @@ extern "C" void app_main(void) {
   STM32GPIO SWCLK(SWCLK_GPIO_Port, SWCLK_Pin);
   STM32GPIO SWDIO(SWDIO_GPIO_Port, SWDIO_Pin);
   STM32GPIO NRST(NRST_GPIO_Port, NRST_Pin);
-
-
-  STM32PWM pwm_tim1_ch2(&htim1, TIM_CHANNEL_2, false);
-
-
   /* Terminal Configuration */
 
   // clang-format on
@@ -89,19 +129,15 @@ extern "C" void app_main(void) {
                              {reinterpret_cast<void *>(UID_BASE), 12});
   usb_fs.Init(false);
   usb_fs.Start(false);
-  float busy = 0.0f;
-  pwm_tim1_ch2.SetConfig({.frequency = 10000});
-  pwm_tim1_ch2.SetDutyCycle(0.0f);
-  pwm_tim1_ch2.Enable();
-  static constexpr float step = 0.003f;
+  if (!XR_ConfigTim1Ch2Pwm(&htim1, 10000u)) {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2) != HAL_OK) {
+    Error_Handler();
+  }
   while (true) {
-    if (daplink.EpInBusy()) {
-      busy = busy * (1.0f - step) + 1.0f * step;
-    } else {
-      busy = busy * (1.0f - step);
-    }
-
-    pwm_tim1_ch2.SetDutyCycle(busy);
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2,
+                          daplink.EpInBusy() ? (htim1.Init.Period + 1u) : 0u);
 
     LibXR::Thread::Sleep(1);
   }
