@@ -40,12 +40,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 file(
     GLOB LIBXR_USER_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/User/*.cpp")
 
-# DAP v2 templates instantiate in app_main.cpp; keep that translation unit
-# size-optimized so global O3/Release fits the F103C8 flash budget.
-set_source_files_properties(
-    ${CMAKE_CURRENT_SOURCE_DIR}/User/app_main.cpp
-    PROPERTIES COMPILE_OPTIONS "-Os")
-
 
 target_sources(${CMAKE_PROJECT_NAME}
     PRIVATE ${LIBXR_USER_SOURCES}
