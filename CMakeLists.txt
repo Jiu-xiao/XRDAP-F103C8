@@ -120,6 +120,29 @@ function(xr_add_clock_build_target target_name clock_mode)
         list(APPEND _cfg_args -DCMAKE_ASM_COMPILER=${CMAKE_ASM_COMPILER})
     endif()
 
+    foreach(_xr_cache_var
+        LIBXR_SYSTEM
+        LIBXR_DRIVER
+        LIBXR_PRINT_ENABLE_INTEGER
+        LIBXR_PRINT_ENABLE_TEXT
+        LIBXR_PRINT_ENABLE_POINTER
+        LIBXR_PRINT_ENABLE_FLOAT
+        LIBXR_PRINT_INTEGER_ENABLE_BASE8_16
+        LIBXR_PRINT_INTEGER_ENABLE_64BIT
+        LIBXR_PRINT_FLOAT_ENABLE_FIXED
+        LIBXR_PRINT_FLOAT_ENABLE_DOUBLE
+        LIBXR_PRINT_FLOAT_ENABLE_SCIENTIFIC
+        LIBXR_PRINT_FLOAT_ENABLE_GENERAL
+        LIBXR_PRINT_FLOAT_ENABLE_LONG_DOUBLE
+        LIBXR_PRINT_ENABLE_WIDTH
+        LIBXR_PRINT_ENABLE_PRECISION
+        LIBXR_PRINT_ENABLE_ALTERNATE
+        LIBXR_PRINT_ENABLE_EXPLICIT_ARGUMENT_INDEXING)
+        if(DEFINED ${_xr_cache_var})
+            list(APPEND _cfg_args -D${_xr_cache_var}=${${_xr_cache_var}})
+        endif()
+    endforeach()
+
     add_custom_target(${target_name}
         COMMAND ${CMAKE_COMMAND} ${_cfg_args}
         COMMAND ${CMAKE_COMMAND} --build ${_clock_build_dir} --target ${CMAKE_PROJECT_NAME}
