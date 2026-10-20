@@ -1,8 +1,12 @@
 # XRDAP-F103C8
 
-适配常见 STLINK V2 硬件形态的 DAPLink/CMSIS-DAP 固件。
+[English](README.en.md)
 
-## 测试设备
+跑在 STLINK V2 形态 STM32F103 板子上的 CMSIS-DAP v2 调试探针固件，基于 [libxr](https://github.com/xrobot-org/libxr)，属于 XR-DAP 系列（另见 [XRDAP-ESP](https://github.com/Jiu-xiao/XRDAP-ESP)）。Keil、pyOCD、probe-rs、OpenOCD 把它当作普通的 CMSIS-DAP 探针使用。固件还实现了 XR 厂商扩展：一条命令读写多个地址、沿指针链解引用、在探针上按固定周期采样目标变量，配合电脑端工具 [XRDAP-Host](https://github.com/Jiu-xiao/XRDAP-Host)（`xrdap`）查看和画曲线。
+
+整个固件约 53 KB，64 KB Flash 的 STM32F103C8 即可容纳。
+
+## 硬件
 
 ### STLINK V2 标准版
 ![STLINK V2标准版](imgs/stlink2.png)
@@ -10,73 +14,96 @@
 ### STLINK V2 淘宝铝壳版
 ![STLINK V2淘宝铝壳版](imgs/stlink1.png)
 
-## 支持芯片与推荐时钟
+探针 MCU 为 `STM32F103C8` 或引脚兼容的 F103 型号（例如 `APM32F103C8`），Flash 不少于 64 KB。
 
-- Probe MCU：`STM32F103C8` / `APM32F103C8`
-- Target（性能测试对象）：`STM32H723ZGTx`
-- 推荐：
-  - `STM32F103C8`：`72M`
-  - `APM32F103C8`：`96M`（`72M` 也可用）
+| 引脚 | 功能 |
+|---|---|
+| `PB13` | SWCLK |
+| `PB14` | SWDIO |
+| `PB6` | nRESET |
+| `PA9` | 指示灯（DAP 活动时变亮） |
+| `PA11` / `PA12` | USB D- / D+ |
 
-## 引脚定义
+STLINK V2 标准版的 SWDIO 上通常没有上拉电阻，需要目标板上拉，或在 SWDIO 与 3.3V 之间外加上拉电阻。
 
-- `PB6`: `nRESET`
-- `PA12`: `USB_DP`
-- `PA11`: `USB_DM`
-- `PA9`: `LED`
-- `PB14`: `SWDIO`
-- `PB13`: `SWCLK`
+## 烧录固件
 
-接线注意：
-- `STLINK V2` 标准版通常在 `SWDIO` 上没有板载上拉电阻，需要依赖目标板上拉，或手动外加上拉电阻。
+Release 中有两个镜像，区别只在系统时钟：
 
-## 时钟模式与构建
+| 镜像 | 系统时钟 | 适用 |
+|---|---|---|
+| `XRDAP-F103C8-72m.bin` | 72 MHz | STM32F103C8 |
+| `XRDAP-F103C8-96m.bin` | 96 MHz | APM32F103C8 等可超频的兼容型号 |
 
-参考LibXR官方教程编译，一次编译直接生成 `72M/96M` 两个固件：
+固件从 `0x08000000` 开始，通过板子上的 SWD 调试口（SWCLK、SWDIO、GND、3.3V 四个焊盘）用另一个调试器烧录，例如 J-Link：
 
-## 72M / 96M 性能实测
+```
+openocd -f interface/jlink.cfg -c "transport select swd" -f target/stm32f1x.cfg -c "program XRDAP-F103C8-72m.bin 0x08000000 verify reset exit"
+```
 
-单位：`KiB/s`
+烧录后插上 USB，探针以 `1D50:6199` 枚举，产品名 `XR-DAP-F103 CMSIS-DAP`，序列号为 `XRobot-XRDAP-` 加芯片 UID 的大写十六进制，与 DAP_Info 中的序列号相同。Linux 下普通用户访问需要 udev 规则：
 
-- SWD 速率：`5000` / `10000`（OpenOCD 与 probe-rs 分别在同速率下测试）
-  - OpenOCD：`load_image + dump_image`
-  - probe-rs：`download(bin@0x24000000) + read(b32 0x24000000 32768)`
-- Flash：`128KiB`
-  - OpenOCD：`erase + flash write_image + verify_image`
-  - probe-rs：`erase + download + verify`（擦除按 `1MiB` 归一化）
+```
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="6199", MODE="0666"
+```
 
-| 模式 | SWD速率 | OpenOCD SRAM写 | OpenOCD SRAM读 | OpenOCD Flash擦除 | OpenOCD Flash编程 | OpenOCD Flash校验 | probe-rs SRAM写 | probe-rs SRAM读 | probe-rs Flash擦除 | probe-rs Flash编程 | probe-rs Flash校验 |
-| ---- | ------: | -------------: | -------------: | ----------------: | ----------------: | ----------------: | --------------: | --------------: | -----------------: | -----------------: | -----------------: |
-| 72M  |    5000 |         246.71 |         200.95 |            143.05 |            113.06 |            943.45 |          137.24 |           39.92 |              74.40 |              33.50 |             125.05 |
-| 72M  |   10000 |         246.87 |         201.63 |            144.05 |            113.05 |            942.50 |          137.03 |           40.00 |              74.42 |              33.44 |             125.20 |
-| 96M  |    5000 |         311.03 |         252.23 |            143.92 |            113.96 |            952.52 |          152.76 |           48.04 |              74.45 |              34.28 |             145.01 |
-| 96M  |   10000 |         311.04 |         251.56 |            146.18 |            113.94 |            952.72 |          153.47 |           48.15 |              74.66 |              34.42 |             145.90 |
+## 使用
 
-## ST-LINK V2 对照实测
+调试工具按 CMSIS-DAP v2 使用即可，例如 OpenOCD：
 
-单位：`KiB/s`
+```
+openocd -f interface/cmsis-dap.cfg -c "adapter serial XRobot-XRDAP-21001200142D363637365744" -f target/stm32f3x.cfg
+```
 
-- Probe 固件：`ST-LINK V2J46S7`
-- RAM：`128KiB`（写入/读出 `0x24000000`）
-- Flash：`128KiB`（`program + verify`）
+`xrdap list` 列出探针：
 
-| 模式           | SWD速率 | OpenOCD SRAM写 | OpenOCD SRAM读 | OpenOCD Flash编程+校验 | CubeCLI SRAM写 | CubeCLI SRAM读 | CubeCLI Flash编程+校验 |
-| -------------- | ------: | -------------: | -------------: | ---------------------: | -------------: | -------------: | ---------------------: |
-| STLINK_V2J46S7 |     480 |          28.14 |          31.50 |                  44.62 |          22.96 |          24.91 |                  11.56 |
-| STLINK_V2J46S7 |    1800 |          78.13 |          80.57 |                  47.50 |          45.96 |          46.21 |                  22.66 |
-| STLINK_V2J46S7 |    4000 |         115.01 |         112.64 |                  47.79 |          56.30 |          55.05 |                  26.86 |
+```
+$ xrdap list
+XRobot-XRDAP-21001200142D363637365744  XR-DAP-F103 CMSIS-DAP
+    USB XRobot-XRDAP-21001200142D363637365744    --probe usb:XRobot-XRDAP-21001200142D363637365744
+```
 
-## DAPLink vs ST-LINK 对比（OpenOCD）
+`xrdap info` 显示 DAP_Info 和厂商扩展的能力（下面是没有接目标时的输出）：
 
-单位：`KiB/s`
+```
+$ xrdap info -p 21001200142D363637365744
+连接：USB XRobot-XRDAP-21001200142D363637365744
+探针：XRobot XR-DAP-F103，序列号 XRobot-XRDAP-21001200142D363637365744，固件 0.6.0
+CMSIS-DAP：2.0.0，包长 512 字节，最多 4 个包在途
+厂商扩展：版本 1，功能 READ、WRITE、采样、8 字节访问（0x0F）
+  每次最多 32 个条目，最多 8 级指针，采样缓冲 4096 字节
+  探针时间 128.435740 s，单次 SWD 访问耗时还没有标定（每次 SUB_SET 时按当前时钟标定）
+目标：连接失败（读 DPIDR 失败：SWD 应答 没有应答（检查接线、目标供电）（响应 05 00 07））
+```
 
-- 对比口径：
-  - DAPLink：取上方 `96M @ 5000` 实测
-  - ST-LINK：取上方 `V2J46S7 @ 4000` Top25 实测
-  - Flash 编程+校验（DAPLink）由 `Flash编程` 与 `Flash校验` 两阶段换算得到：`101.78 KiB/s`
+读写变量、采样（`xrdap read`、`write`、`watch`）的用法见 XRDAP-Host 的说明。
 
-| 指标                   | DAPLink (96M@5000) | ST-LINK V2J46S7 (4000) | DAPLink 相对提升 |
-| ---------------------- | -----------------: | ---------------------: | ---------------: |
-| OpenOCD SRAM写         |             311.03 |                 115.01 |         +170.44% |
-| OpenOCD SRAM读         |             252.23 |                 112.64 |         +123.93% |
-| OpenOCD Flash编程+校验 |             101.78 |                  47.79 |         +112.97% |
+## 厂商扩展
+
+命令格式与 XRDAP-ESP 相同，见 [XRDAP-ESP 协议文档](https://github.com/Jiu-xiao/XRDAP-ESP/blob/main/docs/protocol.md) 第 3 节的 0x80 到 0x85。本固件与 ESP 版的差别：
+
+- 只有 USB 一种传输，采样在 USB 总线复位或拔出后停止，没有 0x86 Wi-Fi 命令；
+- 采样缓冲为 4096 字节（20 KB RAM 的限制），一帧最多 32 个条目；
+- 采样由主循环执行：每读完一拍，主循环先处理一条待执行的 DAP 命令，再检查下一拍是否到期；SUB_SET 报告的单帧耗时为试读耗时乘 1.6。
+
+## 构建
+
+使用 GCC（[Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) 14.2）、CMake 和 Ninja：
+
+```
+git clone --recursive https://github.com/Jiu-xiao/XRDAP-F103C8.git
+cd XRDAP-F103C8
+cmake --preset Release
+cmake --build build/Release
+```
+
+`build/Release/XRDAP_F103C8_clock_72m/` 和 `build/Release/XRDAP_F103C8_clock_96m/` 下各生成一个 `XRDAP-F103C8.elf`。
+
+| 目录 | 内容 |
+|---|---|
+| `User/app_main.cpp` | USB 设备、DAP 实例和主循环 |
+| `User/fast_gpio.hpp` | SWD 位翻转用的寄存器级 GPIO |
+| `User/probe_info.*` | 探针身份（DAP_Info、USB 序列号） |
+| `User/vendor/` | XR 厂商扩展：命令处理、MEM-AP 访问、采样、帧缓冲 |
+| `Core/`、`Drivers/` | STM32CubeMX 生成的初始化代码和 HAL |
+| `Middlewares/Third_Party/LibXR` | libxr 子模块 |
