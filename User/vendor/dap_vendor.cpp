@@ -151,6 +151,12 @@ bool DapVendor::CmdInfo(uint16_t len, uint8_t* resp, uint16_t cap, uint16_t& out
   return true;
 }
 
+// READ、WRITE、SUB_SET 都不把条目拷进数组（32 个条目要 1 KB 以上，F103 的栈放不下）：
+// 先把请求整体校验一遍，再从请求字节里逐条解析、逐条执行。
+// READ, WRITE and SUB_SET do not copy the items into an array (32 items take more than
+// 1 KB, too much for the F103 stack): the request is validated as a whole first, then
+// parsed and executed item by item straight from its bytes.
+
 bool DapVendor::CmdRead(const uint8_t* req, uint16_t len, uint8_t* resp, uint16_t cap,
                         uint16_t& out)
 {
@@ -164,17 +170,18 @@ bool DapVendor::CmdRead(const uint8_t* req, uint16_t len, uint8_t* resp, uint16_
   {
     return Reply(resp, kStatusResource, out);
   }
-  Item items[kMaxItems];
-  const uint8_t* p = req + 2;
-  const uint8_t* end = req + len;
+  const uint8_t* const first = req + 2;
+  const uint8_t* const end = req + len;
+  const uint8_t* p = first;
   uint32_t resp_size = 3U;
   for (uint8_t i = 0; i < count; ++i)
   {
-    if (!ParseItem(p, end, items[i], nullptr) || !SizeValid(items[i].size))
+    Item it;
+    if (!ParseItem(p, end, it, nullptr) || !SizeValid(it.size))
     {
       return Reply(resp, kStatusArg, out);
     }
-    resp_size += 3U + items[i].size;
+    resp_size += 3U + it.size;
   }
   if (p != end)
   {
@@ -192,14 +199,17 @@ bool DapVendor::CmdRead(const uint8_t* req, uint16_t len, uint8_t* resp, uint16_
   resp[1] = kStatusOk;
   resp[2] = count;
   uint8_t* q = resp + 3;
+  p = first;
   for (uint8_t i = 0; i < count; ++i)
   {
+    Item it;
+    (void)ParseItem(p, end, it, nullptr);
     uint8_t value[8] = {};
-    const uint8_t st = mem_.Read(items[i], value);
-    Put16(q, items[i].id);
+    const uint8_t st = mem_.Read(it, value);
+    Put16(q, it.id);
     q[2] = st;
-    std::memcpy(q + 3, value, items[i].size);
-    q += 3 + items[i].size;
+    std::memcpy(q + 3, value, it.size);
+    q += 3 + it.size;
   }
   mem_.Release();
   out = static_cast<uint16_t>(q - resp);
@@ -219,19 +229,19 @@ bool DapVendor::CmdWrite(const uint8_t* req, uint16_t len, uint8_t* resp, uint16
   {
     return Reply(resp, kStatusResource, out);
   }
-  Item items[kMaxItems];
-  uint8_t values[kMaxItems][8] = {};
-  const uint8_t* p = req + 2;
-  const uint8_t* end = req + len;
+  // 每个条目后面紧跟 size 字节的值 / Each item is followed by its size-byte value.
+  const uint8_t* const first = req + 2;
+  const uint8_t* const end = req + len;
+  const uint8_t* p = first;
   for (uint8_t i = 0; i < count; ++i)
   {
-    if (!ParseItem(p, end, items[i], nullptr) || !SizeValid(items[i].size) ||
-        static_cast<size_t>(end - p) < items[i].size)
+    Item it;
+    if (!ParseItem(p, end, it, nullptr) || !SizeValid(it.size) ||
+        static_cast<size_t>(end - p) < it.size)
     {
       return Reply(resp, kStatusArg, out);
     }
-    std::memcpy(values[i], p, items[i].size);
-    p += items[i].size;
+    p += it.size;
   }
   if (p != end)
   {
@@ -249,10 +259,14 @@ bool DapVendor::CmdWrite(const uint8_t* req, uint16_t len, uint8_t* resp, uint16
   resp[1] = kStatusOk;
   resp[2] = count;
   uint8_t* q = resp + 3;
+  p = first;
   for (uint8_t i = 0; i < count; ++i)
   {
-    const uint8_t st = mem_.Write(items[i], values[i]);
-    Put16(q, items[i].id);
+    Item it;
+    (void)ParseItem(p, end, it, nullptr);
+    const uint8_t st = mem_.Write(it, p);
+    p += it.size;
+    Put16(q, it.id);
     q[2] = st;
     q += 3;
   }
@@ -291,14 +305,14 @@ bool DapVendor::CmdSubSet(const uint8_t* req, uint16_t len, uint8_t* resp, uint1
   }
   const uint8_t* p = req + 8;
   const uint8_t* end = req + len;
-  SubItem items[kMaxItems];
   uint8_t aps_seen[kMaxAps];
   uint8_t ap_count = 0U;
   for (uint16_t i = 0; i < count; ++i)
   {
     Item it;
-    if (!ParseItem(p, end, it, &items[i]) || !SizeValid(it.size) || items[i].div == 0U ||
-        items[i].phase >= items[i].div)
+    SubItem sub;
+    if (!ParseItem(p, end, it, &sub) || !SizeValid(it.size) || sub.div == 0U ||
+        sub.phase >= sub.div)
     {
       return Reply(resp, kStatusArg, out);
     }
@@ -326,7 +340,8 @@ bool DapVendor::CmdSubSet(const uint8_t* req, uint16_t len, uint8_t* resp, uint1
   }
 
   Sampler::Estimate est;
-  const uint8_t st = sampler_.Configure(items, count, period, (flags & 1U) != 0U, est);
+  const uint8_t st =
+      sampler_.Configure(SubItemList{req + 8, end, count}, period, (flags & 1U) != 0U, est);
   if (st == kStatusNoTarget)
   {
     return Reply(resp, kStatusNoTarget, out);

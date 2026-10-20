@@ -195,4 +195,28 @@ inline bool ParseItem(const uint8_t*& p, const uint8_t* end, Item& it, SubItem* 
   return true;
 }
 
+/// @brief 已校验过的一串采样条目，留在请求字节里按需解析 / A validated run of sampling
+///        items, left in the request bytes and parsed on demand.
+struct SubItemList
+{
+  const uint8_t* begin;
+  const uint8_t* end;
+  uint16_t count;
+
+  /// 依次解析每个条目并调用 fn(const SubItem&) / Parse each item in turn and call
+  /// fn(const SubItem&).
+  template <typename Fn>
+  void ForEach(Fn&& fn) const
+  {
+    const uint8_t* p = begin;
+    for (uint16_t i = 0; i < count; ++i)
+    {
+      Item it;
+      SubItem sub;
+      (void)ParseItem(p, end, it, &sub);
+      fn(sub);
+    }
+  }
+};
+
 }  // namespace XrDap::Vendor

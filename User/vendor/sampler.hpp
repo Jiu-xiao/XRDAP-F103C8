@@ -35,13 +35,14 @@ class Sampler
 
   explicit Sampler(MemAp& mem) : mem_(mem) {}
 
-  /// @brief 实测这组条目一帧的耗时并保存配置（SUB_SET）/ Measure the frame time of these
-  ///        items and store the configuration (SUB_SET).
+  /// @brief 实测这组条目一帧的耗时，成功时保存配置（SUB_SET）；失败时之前的配置和缓冲
+  ///        不变 / Measure the frame time of these items and store the configuration on
+  ///        success (SUB_SET); on failure the previous configuration and buffer stay.
   /// @return kStatusOk；估计耗时超过周期或帧太大时 kStatusResource；SWD 访问失败时
   ///         kStatusNoTarget / kStatusOk; kStatusResource when the estimate exceeds the
   ///         period or the frame is too big; kStatusNoTarget when SWD access fails.
-  uint8_t Configure(const SubItem* items, uint16_t count, uint32_t period_us,
-                    bool stop_on_full, Estimate& est);
+  uint8_t Configure(const SubItemList& items, uint32_t period_us, bool stop_on_full,
+                    Estimate& est);
   /// 是否有有效配置 / Whether a valid configuration exists.
   bool Configured() const { return configured_; }
   /// 是否正在采样 / Whether sampling is running.
@@ -74,7 +75,7 @@ class Sampler
     bool valid;
   };
 
-  bool MeasureFrame(const SubItem* items, uint16_t count, uint32_t& us);
+  bool MeasureFrame(const SubItemList& items, uint32_t& us);
   const ApCsw* FindCsw(uint8_t ap) const;
   void SampleTick(const uint16_t* order, uint16_t due, uint8_t* values, uint8_t* marks);
 

@@ -63,7 +63,7 @@ XRobot-XRDAP-21001200142D363637365744  XR-DAP-F103 CMSIS-DAP
     USB XRobot-XRDAP-21001200142D363637365744    --probe usb:XRobot-XRDAP-21001200142D363637365744
 ```
 
-`xrdap info` 显示 DAP_Info 和厂商扩展的能力（下面是没有接目标时的输出）：
+`xrdap info` 显示 DAP_Info、厂商扩展的能力和目标内核：
 
 ```
 $ xrdap info -p 21001200142D363637365744
@@ -72,11 +72,40 @@ $ xrdap info -p 21001200142D363637365744
 CMSIS-DAP：2.0.0，包长 512 字节，最多 4 个包在途
 厂商扩展：版本 1，功能 READ、WRITE、采样、8 字节访问（0x0F）
   每次最多 32 个条目，最多 8 级指针，采样缓冲 4096 字节
-  探针时间 128.435740 s，单次 SWD 访问耗时还没有标定（每次 SUB_SET 时按当前时钟标定）
-目标：连接失败（读 DPIDR 失败：SWD 应答 没有应答（检查接线、目标供电）（响应 05 00 07））
+  探针时间 10.543958 s，单次 SWD 访问耗时还没有标定（每次 SUB_SET 时按当前时钟标定）
+目标：DPIDR 0x2BA01477（ARM，设计者代码 0x23B，DPv1，部件号 0xBA），SWD 时钟 4000000 Hz
+内核：Cortex-M4 r0p1，运行中（DHCSR 0x01010001）
 ```
 
-读写变量、采样（`xrdap read`、`write`、`watch`）的用法见 XRDAP-Host 的说明。
+`xrdap read`、`write` 按 ELF（带 `-g` 调试信息）里的变量名读写目标内存。下面的目标程序 `app.elf` 中有全局变量 `counter` 和结构体 `state`：
+
+```
+$ xrdap read -p 21001200142D363637365744 --elf app.elf counter state
+counter        = 16342240 (0x00F95CE0)
+state.ticks    = 21079 (0x00005257)
+state.wave     = 0.6699997
+state.step     = 1 (0x0001)
+state.flags[0] = 1 (0x01)
+state.flags[1] = 2 (0x02)
+state.flags[2] = 3 (0x03)
+state.flags[3] = 4 (0x04)
+
+$ xrdap write -p 21001200142D363637365744 --elf app.elf 'state.flags[2]=9'
+state.flags[2] ← 9，读回 9 (0x09)
+```
+
+`xrdap watch` 在探针上按固定周期采样，`@10` 表示每 10 拍采一次。下面以 1 ms 周期采样 2 秒：
+
+```
+$ xrdap watch -p 21001200142D363637365744 --elf app.elf counter state.wave state.ticks@10 --period 1ms --duration 2 --csv w.csv
+已停止：2001 帧，用时 2.00 s；探针跳过节拍 0，缓冲丢帧 0，帧序号缺口 0，读取失败的值 0
+w.csv 的 host_time 列是对到电脑时钟的 Unix 时间（秒），按 SUB_READ 的往返时间估计，误差约 ±163 µs
+$ head -4 w.csv
+host_time,t,sample_tick,counter,state.wave,state.ticks
+1792500177.385438,0.000000,0,19881886,0.5799998,25644
+1792500177.386398,0.000960,1,19882608,0.5699998,
+1792500177.387392,0.001954,2,19883378,0.5599998,
+```
 
 ## 厂商扩展
 

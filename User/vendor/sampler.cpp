@@ -17,20 +17,28 @@ void MarkFailed(uint8_t* marks, uint16_t i)
 }
 }  // namespace
 
-uint8_t Sampler::Configure(const SubItem* items, uint16_t count, uint32_t period_us,
-                           bool stop_on_full, Estimate& est)
+uint8_t Sampler::Configure(const SubItemList& items, uint32_t period_us, bool stop_on_full,
+                           Estimate& est)
 {
-  uint32_t max_frame = 10U + (count + 7U) / 8U;
-  for (uint16_t i = 0; i < count; ++i)
-  {
-    max_frame += items[i].item.size;
-  }
+  uint32_t max_frame = 10U + (items.count + 7U) / 8U;
+  uint8_t first_ap = 0U;
+  bool first = true;
+  items.ForEach(
+      [&](const SubItem& sub)
+      {
+        max_frame += sub.item.size;
+        if (first)
+        {
+          first_ap = sub.item.ap;
+          first = false;
+        }
+      });
   est.max_frame = static_cast<uint16_t>(max_frame);
 
   // 按当前 SWD 时钟实测：先标定单次访问耗时（INFO 会报告），再把全部条目试读一遍，得到
   // 所有条目都到期时一帧的耗时。
   uint32_t access_us = 0U;
-  const bool calibrated = mem_.Calibrate(items[0].item.ap, access_us);
+  const bool calibrated = mem_.Calibrate(first_ap, access_us);
   mem_.Release();
   if (!calibrated)
   {
@@ -38,7 +46,7 @@ uint8_t Sampler::Configure(const SubItem* items, uint16_t count, uint32_t period
   }
   access_us_ = access_us;
   uint32_t frame_us = 0U;
-  if (!MeasureFrame(items, count, frame_us))
+  if (!MeasureFrame(items, frame_us))
   {
     return kStatusNoTarget;
   }
@@ -51,8 +59,8 @@ uint8_t Sampler::Configure(const SubItem* items, uint16_t count, uint32_t period
     return kStatusResource;
   }
 
-  std::memcpy(items_, items, sizeof(SubItem) * count);
-  count_ = count;
+  count_ = 0U;
+  items.ForEach([&](const SubItem& sub) { items_[count_++] = sub; });
   period_us_ = period_us;
   stop_on_full_ = stop_on_full;
   ring_.Reset();
@@ -62,29 +70,28 @@ uint8_t Sampler::Configure(const SubItem* items, uint16_t count, uint32_t period
 
 // 按采样时的访问序列试读两遍，返回第二遍的耗时（第一遍的 CSW 写入等一次性开销不计）。
 // 各 AP 的 CSW 先读好，不计入耗时。试读和采样访问同一批地址，副作用相同。
-bool Sampler::MeasureFrame(const SubItem* items, uint16_t count, uint32_t& us)
+bool Sampler::MeasureFrame(const SubItemList& items, uint32_t& us)
 {
   mem_.ResetCache();
   bool ok = true;
-  for (uint16_t i = 0; ok && i < count; ++i)
-  {
-    ok = mem_.EnsureAp(items[i].item.ap) != nullptr;
-  }
+  items.ForEach([&](const SubItem& sub)
+                { ok = ok && mem_.EnsureAp(sub.item.ap) != nullptr; });
   for (int pass = 0; ok && pass < 2; ++pass)
   {
     MemAp::ApState ap{};
     const uint64_t t0 = NowUs();
-    for (uint16_t i = 0; i < count; ++i)
-    {
-      const Item& it = items[i].item;
-      if (ap.ap != it.ap)
-      {
-        ap = *mem_.EnsureAp(it.ap);
-        ap.written = false;
-      }
-      uint8_t value[8];
-      (void)mem_.ReadItem(ap, it, value);
-    }
+    items.ForEach(
+        [&](const SubItem& sub)
+        {
+          const Item& it = sub.item;
+          if (ap.ap != it.ap)
+          {
+            ap = *mem_.EnsureAp(it.ap);
+            ap.written = false;
+          }
+          uint8_t value[8];
+          (void)mem_.ReadItem(ap, it, value);
+        });
     us = static_cast<uint32_t>(NowUs() - t0);
   }
   mem_.Release();
