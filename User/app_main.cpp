@@ -32,6 +32,9 @@ constexpr uint16_t kUsbPid = 0x6199;
 constexpr uint16_t kUsbBcd = 0x0400;  // distinct from the other XR-DAP boards
 constexpr uint16_t kDapPacketSize = 512;
 constexpr uint8_t kDapPacketCount = 4;
+// DAP_QueueCommands buffer: two packets. The LibXR default (2048) leaves the 20 KB of RAM
+// without headroom once the heap and the reserved stack are counted.
+constexpr uint16_t kDapQueueBytes = 2 * kDapPacketSize;
 // Delay-loop iterations per microsecond of the SWD half period. One iteration takes
 // about 10 CPU cycles, so the value scales with the system clock (XR_CLOCK_MODE in MHz);
 // rounded down, every SWD clock setting runs at or below the requested rate.
@@ -42,7 +45,8 @@ constexpr uint8_t PinIndex(uint16_t mask) { return __builtin_ctz(mask); }
 using Swclk = FastGpio<GPIOB_BASE, PinIndex(SWCLK_Pin)>;
 using Swdio = FastGpio<GPIOB_BASE, PinIndex(SWDIO_Pin)>;
 using Swd = LibXR::Debug::SwdGeneralGPIO<Swclk, Swdio>;
-using Dap = LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount, kDapPacketSize>;
+using Dap = LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount, kDapPacketSize,
+                                       kDapQueueBytes>;
 
 // FSDEV packet memory is 512 B: 8 B of BTABLE per endpoint, then 64 B per direction.
 // LibXR endpoint slot memory must be aligned to HW_CACHE_LINE_SIZE.
