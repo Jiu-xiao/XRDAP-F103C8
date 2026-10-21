@@ -26,7 +26,7 @@
 
 #include <cstdint>
 
-#include "status_light.hpp"
+#include "xrdap/light/status_light.hpp"
 
 namespace XrDap
 {

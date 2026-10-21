@@ -117,9 +117,9 @@ Each row of `w.csv` is one frame: time, tick number and the value of each variab
 
 The vendor extension code comes from [XRDAP-Core](https://github.com/Jiu-xiao/XRDAP-Core); see commands 0x80 to 0x85 in section 3 of its [protocol document](https://github.com/Jiu-xiao/XRDAP-Core/blob/main/docs/protocol.en.md). This firmware differs from the ESP version as follows:
 
-- USB is the only transport, and there is no 0x86 Wi-Fi command. Sampling started over USB stops after a USB bus reset (a replug, or the computer resetting the device).
+- USB is the only transport, and there is no 0x86 Wi-Fi command. Sampling belongs to the USB debug session, which ends on DAP_Disconnect or a USB bus reset (a replug, or the computer resetting the device); sampling stops with it.
 - The sampling buffer is 4096 bytes (limited by the 20 KB of RAM), with at most 32 items per frame.
-- The main loop runs the sampling: after each tick it handles one pending DAP command, then checks whether the next tick is due.
+- TIM2 makes the ticks (1 us resolution) and the main loop runs the sampling: after each tick it handles one pending DAP command, then checks whether TIM2 counted another tick.
 
 ## Building
 
@@ -145,11 +145,11 @@ ctest --test-dir build-test
 | Path | Contents |
 |---|---|
 | `User/app_main.cpp` | USB device, DAP instance and main loop |
-| `User/fast_gpio.hpp` | Register-level GPIO for the SWD bit-bang loop |
+| `User/tick_timer.*` | Sampling tick timer (TIM2) |
 | `User/probe_info.*` | Probe identity (DAP_Info, USB serial) |
 | `User/status_led.*` | Status light (PA9, TIM1) |
 | `User/led_drive.hpp` | One frame of the status light rule to on/off and red share of this two-colour light, without hardware |
 | `test/` | Host tests |
-| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core submodule: XR vendor extension, status light rule, probe identity |
+| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core submodule: XR vendor extension, session and command execution, status light rule, probe identity, register-level GPIO for SWD |
 | `Core/`, `Drivers/` | STM32CubeMX-generated initialization code and HAL |
 | `Middlewares/Third_Party/LibXR` | libxr submodule |

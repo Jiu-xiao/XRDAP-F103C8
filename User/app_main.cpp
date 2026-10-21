@@ -12,26 +12,29 @@
 
 #include <cstdint>
 
-#include "dap_vendor.hpp"
 #include "daplink_v2_profile_swd.hpp"
 #include "debug/swd_general_gpio.hpp"
-#include "fast_gpio.hpp"
 #include "libxr.hpp"
 #include "main.h"
 #include "probe_info.hpp"
 #include "status_led.hpp"
-#include "status_light.hpp"
 #include "stm32_gpio.hpp"
 #include "stm32_timebase.hpp"
 #include "stm32_usb_fsdev.hpp"
+#include "tick_timer.hpp"
+#include "xrdap/activity/dap_activity.hpp"
+#include "xrdap/light/status_light.hpp"
+#include "xrdap/probe/chip_uid.hpp"
+#include "xrdap/probe/family.hpp"
+#include "xrdap/session/executor.hpp"
+#include "xrdap/session/session_owner.hpp"
+#include "xrdap/swd/f1_gpio.hpp"
+#include "xrdap/vendor/dap_vendor.hpp"
 
 namespace
 {
 using namespace XrDap;
 
-constexpr uint16_t kUsbVid = 0x1D50;  // XRUSB VID:PID, shared by the XR-DAP family
-constexpr uint16_t kUsbPid = 0x6199;
-constexpr uint16_t kUsbBcd = 0x0400;  // distinct from the other XR-DAP boards
 constexpr uint16_t kDapPacketSize = 512;
 constexpr uint8_t kDapPacketCount = 4;
 // DAP_QueueCommands buffer: two packets. The LibXR default (2048) leaves the 20 KB of RAM
@@ -45,20 +48,20 @@ constexpr uint32_t kSwdLoopsPerUs = XR_CLOCK_MODE / 10;
 
 constexpr uint8_t PinIndex(uint16_t mask) { return __builtin_ctz(mask); }
 // SWCLK and SWDIO are PB13 and PB14 (CubeMX labels SWCLK / SWDIO).
-using Swclk = FastGpio<GPIOB_BASE, PinIndex(SWCLK_Pin)>;
-using Swdio = FastGpio<GPIOB_BASE, PinIndex(SWDIO_Pin)>;
+using Swclk = F1Gpio<GPIOB_BASE, PinIndex(SWCLK_Pin)>;
+using Swdio = F1Gpio<GPIOB_BASE, PinIndex(SWDIO_Pin)>;
 using Swd = LibXR::Debug::SwdGeneralGPIO<Swclk, Swdio>;
 using DapBase = LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount,
                                            kDapPacketSize, kDapQueueBytes>;
 
 // The DAP class, also counting USB bus resets (libxr reports them to every class):
-// sampling started from USB stops when the count changes, as the host is gone.
-class Dap final : public DapBase
+// a changed count ends the USB session (and its sampling), as the host is gone.
+class UsbDap final : public DapBase
 {
  public:
   using DapBase::DapBase;
 
-  static uint32_t BusResets(void* ctx) { return static_cast<Dap*>(ctx)->resets_; }
+  static uint32_t BusResets(void* ctx) { return static_cast<UsbDap*>(ctx)->resets_; }
 
  private:
   void OnDeviceEvent(bool in_isr, LibXR::USB::DeviceEvent event,
@@ -94,14 +97,19 @@ extern "C" void app_main(void)
   static LibXR::STM32GPIO nreset(NRST_GPIO_Port, NRST_Pin);
   static Swd swd(swclk, swdio, kSwdLoopsPerUs);
 
-  static Dap dap(LibXR::USB::Endpoint::EPNumber::EP1, LibXR::USB::Endpoint::EPNumber::EP1,
-                 swd, &nreset);
-  static char serial[SerialBufferSize(kChipUidSize)];
-  FormatSerial(ChipUid(), kChipUidSize, serial);
+  static UsbDap dap(LibXR::USB::Endpoint::EPNumber::EP1,
+                    LibXR::USB::Endpoint::EPNumber::EP1, swd, &nreset);
+  static char serial[SerialBufferSize(kF1ChipUidBytes)];
+  FormatSerial(F1ChipUid(), kF1ChipUidBytes, serial);
   SetProbeInfo(dap, {kProductName, kBoardName, serial, kFirmwareVersion});
-  static DapVendor vendor(swd, kDapPacketSize);
-  dap.SetCommandHook(&DapVendor::Hook, &vendor);
-  vendor.SetUsbResetSource(&Dap::BusResets, &dap);
+  // USB is the only transport, so the USB host always owns the session; it ends on
+  // DAP_Disconnect and on a USB bus reset.
+  static SessionOwner session;
+  session.SetUsbResetSource(&UsbDap::BusResets, &dap);
+  static DapVendor vendor(swd, session);
+  static DapActivity activity;
+  static Executor<UsbDap> exec(dap, session, vendor, activity);
+  static Tim2TickTimer tick(vendor);
 
   static constexpr auto kStrings = LibXR::USB::DescriptorStrings::MakeLanguagePack(
       LibXR::USB::DescriptorStrings::Language::EN_US, kVendorName, kUsbProductName,
@@ -109,24 +117,24 @@ extern "C" void app_main(void)
   static LibXR::STM32USBDeviceDevFs usb(
       {{ep0_buffer, kFsPacket}, {ep1_dap_out, kFsPacket}},
       {{ep0_buffer, kFsPacket}, {ep1_dap_in, kFsPacket}},
-      LibXR::USB::DeviceDescriptor::PacketSize0::SIZE_64, kUsbVid, kUsbPid, kUsbBcd,
-      {&kStrings}, {{&dap}}, {ChipUid(), kChipUidSize});
+      LibXR::USB::DeviceDescriptor::PacketSize0::SIZE_64, Family::kUsbVid,
+      Family::kUsbPid, Family::kBcdF103, {&kStrings}, {{&dap}},
+      {F1ChipUid(), kF1ChipUidBytes});
   usb.Init(false);
   usb.Start(false);
 
   static StatusLed led;
   static Light::StatusLight light(
       static_cast<uint32_t>(LibXR::Timebase::GetMilliseconds()));
-  // LibXR runs DAP commands (and the vendor hook) when the application calls Step().
-  // Between commands the vendor extension reads a due sampling tick, so Step does not
-  // wait while sampling runs.
+  // LibXR runs DAP commands (and the executor's hook) when the executor calls Step().
+  // Between commands the vendor extension samples a tick when TIM2 counted one, so Step
+  // does not wait while sampling runs.
   for (;;)
   {
-    vendor.Poll();
-    (void)dap.Step(vendor.Sampling() ? 0 : 1);
+    vendor.Poll(tick);
+    (void)exec.StepUsb(vendor.Sampling() ? 0 : 1);
     const auto now_ms = static_cast<uint32_t>(LibXR::Timebase::GetMilliseconds());
     const auto link = dap.IsInited() ? Light::Link::WIRED : Light::Link::NONE;
-    led.Show(
-        light.Update(link, Light::Setting::NONE, vendor.Activity().Read(now_ms), now_ms));
+    led.Show(light.Update(link, Light::Setting::NONE, activity.Read(now_ms), now_ms));
   }
 }

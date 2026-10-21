@@ -5,4 +5,4 @@
 [submodule "Middlewares/Third_Party/XRDAP-Core"]
 	path = Middlewares/Third_Party/XRDAP-Core
 	url = https://github.com/Jiu-xiao/XRDAP-Core.git
-	branch = main
+	branch = feat/xrdap-core-r2

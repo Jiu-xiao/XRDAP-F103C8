@@ -117,9 +117,9 @@ $ xrdap watch -p <UID 末尾几位> --elf app.elf counter state.wave state.ticks
 
 厂商扩展的代码来自 [XRDAP-Core](https://github.com/Jiu-xiao/XRDAP-Core)，命令格式见其[协议文档](https://github.com/Jiu-xiao/XRDAP-Core/blob/main/docs/protocol.md)第 3 节的 0x80 到 0x85。本固件与 ESP 版的差别：
 
-- 只有 USB 一种传输，没有 0x86 Wi-Fi 命令；从 USB 开始的采样在 USB 总线复位（重新插上，或电脑复位设备）后停止；
+- 只有 USB 一种传输，没有 0x86 Wi-Fi 命令；采样属于 USB 的调试会话，DAP_Disconnect 或 USB 总线复位（重新插上，或电脑复位设备）结束会话，采样随之停止；
 - 采样缓冲为 4096 字节（20 KB RAM 的限制），一帧最多 32 个条目；
-- 采样由主循环执行：每读完一拍，主循环先处理一条待执行的 DAP 命令，再检查下一拍是否到期。
+- 节拍由 TIM2 产生（1 us 分辨率），采样由主循环执行：每读完一拍，主循环先处理一条待执行的 DAP 命令，再检查 TIM2 是否又数了一拍。
 
 ## 构建
 
@@ -145,11 +145,11 @@ ctest --test-dir build-test
 | 目录 | 内容 |
 |---|---|
 | `User/app_main.cpp` | USB 设备、DAP 实例和主循环 |
-| `User/fast_gpio.hpp` | SWD 位翻转用的寄存器级 GPIO |
+| `User/tick_timer.*` | 采样节拍定时器（TIM2） |
 | `User/probe_info.*` | 探针身份（DAP_Info、USB 序列号） |
 | `User/status_led.*` | 状态灯（PA9、TIM1） |
 | `User/led_drive.hpp` | 状态灯规则的一帧换成这颗双色灯的亮灭和红色占比，不依赖硬件 |
 | `test/` | 电脑上的测试 |
-| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core 子模块：XR 厂商扩展、状态灯规则、探针身份 |
+| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core 子模块：XR 厂商扩展、会话与命令执行、状态灯规则、探针身份、SWD 用的寄存器级 GPIO |
 | `Core/`、`Drivers/` | STM32CubeMX 生成的初始化代码和 HAL |
 | `Middlewares/Third_Party/LibXR` | libxr 子模块 |

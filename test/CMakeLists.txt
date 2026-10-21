@@ -13,8 +13,7 @@ set(CORE_DIR ${REPO_DIR}/Middlewares/Third_Party/XRDAP-Core)
 add_executable(test_led_drive test_led_drive.cpp)
 target_include_directories(test_led_drive PRIVATE
     ${REPO_DIR}/User
-    ${CORE_DIR}/light
-    ${CORE_DIR}/vendor
+    ${CORE_DIR}
 )
 target_compile_options(test_led_drive PRIVATE -Wall -Wextra -Werror)
 add_test(NAME led_drive COMMAND test_led_drive)
