@@ -47,8 +47,31 @@ constexpr uint8_t PinIndex(uint16_t mask) { return __builtin_ctz(mask); }
 using Swclk = FastGpio<GPIOB_BASE, PinIndex(SWCLK_Pin)>;
 using Swdio = FastGpio<GPIOB_BASE, PinIndex(SWDIO_Pin)>;
 using Swd = LibXR::Debug::SwdGeneralGPIO<Swclk, Swdio>;
-using Dap = LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount,
-                                       kDapPacketSize, kDapQueueBytes>;
+using DapBase = LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount,
+                                           kDapPacketSize, kDapQueueBytes>;
+
+// The DAP class, also counting USB bus resets (libxr reports them to every class):
+// sampling started from USB stops when the count changes, as the host is gone.
+class Dap final : public DapBase
+{
+ public:
+  using DapBase::DapBase;
+
+  static uint32_t BusResets(void* ctx) { return static_cast<Dap*>(ctx)->resets_; }
+
+ private:
+  void OnDeviceEvent(bool in_isr, LibXR::USB::DeviceEvent event,
+                     uint8_t endpoint) override
+  {
+    if (event == LibXR::USB::DeviceEvent::RESET)
+    {
+      resets_ = resets_ + 1U;
+    }
+    DapBase::OnDeviceEvent(in_isr, event, endpoint);
+  }
+
+  volatile uint32_t resets_ = 0;  // written by the USB interrupt, read by the main loop
+};
 
 // FSDEV packet memory is 512 B: 8 B of BTABLE per endpoint, then 64 B per direction.
 // LibXR endpoint slot memory must be aligned to HW_CACHE_LINE_SIZE.
@@ -77,6 +100,7 @@ extern "C" void app_main(void)
   SetProbeInfo(dap, {kProductName, kBoardName, serial, kFirmwareVersion});
   static DapVendor vendor(swd, kDapPacketSize);
   dap.SetCommandHook(&DapVendor::Hook, &vendor);
+  vendor.SetUsbResetSource(&Dap::BusResets, &dap);
 
   static constexpr auto kStrings = LibXR::USB::DescriptorStrings::MakeLanguagePack(
       LibXR::USB::DescriptorStrings::Language::EN_US, kVendorName, kUsbProductName,
@@ -94,21 +118,14 @@ extern "C" void app_main(void)
       static_cast<uint32_t>(LibXR::Timebase::GetMilliseconds()));
   // LibXR runs DAP commands (and the vendor hook) when the application calls Step().
   // Between commands the vendor extension reads a due sampling tick, so Step does not
-  // wait while sampling runs. When USB goes away (bus reset or unplug) the host is gone:
-  // sampling stops and the vendor extension needs a new DAP_Connect.
-  bool usb_up = false;
+  // wait while sampling runs.
   for (;;)
   {
-    const bool up = dap.IsInited();
-    if (usb_up && !up)
-    {
-      vendor.OnTransportClosed();
-    }
-    usb_up = up;
     vendor.Poll();
     (void)dap.Step(vendor.Sampling() ? 0 : 1);
     const auto now_ms = static_cast<uint32_t>(LibXR::Timebase::GetMilliseconds());
-    led.Show(light.Update(up ? Light::Link::WIRED : Light::Link::NONE,
-                          Light::Setting::NONE, vendor.Activity().Read(now_ms), now_ms));
+    const auto link = dap.IsInited() ? Light::Link::WIRED : Light::Link::NONE;
+    led.Show(light.Update(link, Light::Setting::NONE, vendor.Activity().Read(now_ms),
+                          now_ms));
   }
 }
