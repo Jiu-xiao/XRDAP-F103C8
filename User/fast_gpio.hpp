@@ -6,11 +6,20 @@
 // 提供 LibXR::Debug::SwdGeneralGPIO 需要的 GpioType 接口（Direction、Pull、SetConfig、
 // Write、Read）。端口时钟由 CubeMX 的 MX_GPIO_Init 打开。
 //
+// Write() 和 Read() 经 BSRR/BRR/IDR，是原子的。SetConfig() 对 CRL/CRH 做读-改-写，同一个
+// 寄存器还管着这个端口的另外 7 个引脚，所以只能在一个执行上下文里用（本固件是主循环里的
+// SWD），不能和中断里改同一端口模式的代码并存。
+//
 // Register-level GPIO for the SWD bit-bang loop. Port and pin are template arguments, so
 // every access compiles to one store or load on BSRR/BRR/IDR; LibXR's STM32GPIO writes a
 // pin through HAL function calls, which is much slower under -Os. It provides the
 // GpioType interface LibXR::Debug::SwdGeneralGPIO expects (Direction, Pull, SetConfig,
 // Write, Read). The port clock is enabled by CubeMX's MX_GPIO_Init.
+//
+// Write() and Read() go through BSRR/BRR/IDR and are atomic. SetConfig() does a
+// read-modify-write of CRL/CRH, which also hold 7 other pins of the port, so it is for
+// one execution context only (here: SWD in the main loop) and must not coexist with
+// interrupt code that changes pin modes on the same port.
 
 #include <cstdint>
 
