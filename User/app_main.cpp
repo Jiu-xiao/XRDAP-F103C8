@@ -5,8 +5,8 @@
 // shows the host state and DAP activity (see status_led.hpp).
 //
 // XR-DAP-F103：基于 LibXR、跑在 STLINK-V2 形态 STM32F103 板子上的 CMSIS-DAP v2 调试探针。
-// 一个 USB 全速 Bulk v2 DAP 接口，带 XR 厂商扩展（多地址读写、指针链、探针端采样）；
-// PA9 上的红蓝灯显示上位机状态和 DAP 活动（见 status_led.hpp）。
+// 一个 USB 全速 Bulk v2 DAP 接口，带 XR 厂商扩展（多地址读写、指针链、探针端采样）；PA9
+// 上的红蓝灯显示上位机状态和 DAP 活动（见 status_led.hpp）。
 
 #include "app_main.h"
 
@@ -126,7 +126,7 @@ extern "C" void app_main(void)
     (void)dap.Step(vendor.Sampling() ? 0 : 1);
     const auto now_ms = static_cast<uint32_t>(LibXR::Timebase::GetMilliseconds());
     const auto link = dap.IsInited() ? Light::Link::WIRED : Light::Link::NONE;
-    led.Show(light.Update(link, Light::Setting::NONE, vendor.Activity().Read(now_ms),
-                          now_ms));
+    led.Show(
+        light.Update(link, Light::Setting::NONE, vendor.Activity().Read(now_ms), now_ms));
   }
 }

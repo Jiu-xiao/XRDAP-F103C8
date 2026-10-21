@@ -31,8 +31,8 @@ void StatusLed::Show(const Light::Frame& frame)
   SetRed(drive.red_permille);
 }
 
-// TIM1 由 CubeMX 设为 ARR = 0xFFFF，PWM1、高电平有效：CCR2 是一个周期里 PA9 为高（红）的
-// 计数。CCR2 是 16 位，满量程取 ARR。
+// TIM1 由 CubeMX 设为 ARR = 0xFFFF，PWM1、高电平有效：CCR2 是一个周期里 PA9 为高（红）
+// 的计数。CCR2 是 16 位，满量程取 ARR。
 // CubeMX sets TIM1 to ARR = 0xFFFF, PWM1, active high: CCR2 counts the part of a period
 // with PA9 high (red). CCR2 is 16 bits, so full scale is ARR.
 void StatusLed::SetRed(uint32_t permille)

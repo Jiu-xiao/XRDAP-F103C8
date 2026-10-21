@@ -2,8 +2,8 @@
 #pragma once
 
 // 本探针的身份：产品名、板子名、固件版本和芯片 UID。序列号规则和 DAP_Info 字符串来自
-// XRDAP-Core 的 probe_identity.hpp：前缀加 12 字节 UID 的大写十六进制，与 USB 协议栈生成的
-// 设备序列号相同。
+// XRDAP-Core 的 probe_identity.hpp：前缀加 12 字节 UID 的大写十六进制，与 USB 协议栈生
+// 成的设备序列号相同。
 //
 // Identity of this probe: product, board, firmware version and chip UID. The serial rule
 // and the DAP_Info strings come from XRDAP-Core's probe_identity.hpp: the prefix plus the

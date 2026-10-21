@@ -6,9 +6,9 @@
 // 提供 LibXR::Debug::SwdGeneralGPIO 需要的 GpioType 接口（Direction、Pull、SetConfig、
 // Write、Read）。端口时钟由 CubeMX 的 MX_GPIO_Init 打开。
 //
-// Write() 和 Read() 经 BSRR/BRR/IDR，是原子的。SetConfig() 对 CRL/CRH 做读-改-写，同一个
-// 寄存器还管着这个端口的另外 7 个引脚，所以只能在一个执行上下文里用（本固件是主循环里的
-// SWD），不能和中断里改同一端口模式的代码并存。
+// Write() 和 Read() 经 BSRR/BRR/IDR，是原子的。SetConfig() 对 CRL/CRH 做读-改-写，同一
+// 个寄存器还管着这个端口的另外 7 个引脚，所以只能在一个执行上下文里用（本固件是主循环里
+// 的 SWD），不能和中断里改同一端口模式的代码并存。
 //
 // Register-level GPIO for the SWD bit-bang loop. Port and pin are template arguments, so
 // every access compiles to one store or load on BSRR/BRR/IDR; LibXR's STM32GPIO writes a
