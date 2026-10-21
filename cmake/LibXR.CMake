@@ -6,18 +6,9 @@ target_link_libraries(xr
     PUBLIC stm32cubemx
 )
 
-target_include_directories(xr
-    PUBLIC $<TARGET_PROPERTY:stm32cubemx,INTERFACE_INCLUDE_DIRECTORIES>
-    PUBLIC Core/Inc
-    PUBLIC User
-)
-
-# Add include paths
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
-    PUBLIC $<TARGET_PROPERTY:xr,INTERFACE_INCLUDE_DIRECTORIES>
-    PUBLIC User
-)
+# The product's own headers (User/, including xrdap_port.hpp for XRDAP-Core) are
+# private to the firmware target; LibXR gets the CubeMX headers through stm32cubemx.
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE User)
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
