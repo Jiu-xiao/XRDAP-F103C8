@@ -4,7 +4,7 @@
 
 跑在 STLINK V2 形态 STM32F103 板子上的 CMSIS-DAP v2 调试探针固件，基于 [libxr](https://github.com/xrobot-org/libxr)，属于 XR-DAP 系列（另见 [XRDAP-ESP](https://github.com/Jiu-xiao/XRDAP-ESP)）。Keil、pyOCD、probe-rs、OpenOCD 把它当作普通的 CMSIS-DAP 探针使用。固件还实现了 XR 厂商扩展：一条命令读写多个地址、沿指针链解引用、在探针上按固定周期采样目标变量，配合电脑端工具 [XRDAP-Host](https://github.com/Jiu-xiao/XRDAP-Host)（`xrdap`）查看和画曲线。
 
-整个固件约 53 KB，64 KB Flash 的 STM32F103C8 即可容纳。
+整个固件约 56 KB，64 KB Flash 的 STM32F103C8 即可容纳。
 
 ## 硬件
 

@@ -4,7 +4,7 @@
 
 CMSIS-DAP v2 debug probe firmware for STLINK V2 style STM32F103 boards, built on [libxr](https://github.com/xrobot-org/libxr) and part of the XR-DAP family (see also [XRDAP-ESP](https://github.com/Jiu-xiao/XRDAP-ESP)). Keil, pyOCD, probe-rs and OpenOCD use it as a standard CMSIS-DAP probe. The firmware also implements the XR vendor extension: one command reads or writes many addresses, follows pointer chains, and samples target variables on the probe at a fixed period, which the host tool [XRDAP-Host](https://github.com/Jiu-xiao/XRDAP-Host) (`xrdap`) shows and plots.
 
-The whole firmware is about 53 KB and fits the 64 KB flash of an STM32F103C8.
+The whole firmware is about 56 KB and fits the 64 KB flash of an STM32F103C8.
 
 ## Hardware
 
