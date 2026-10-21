@@ -62,9 +62,13 @@ FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 64K
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM);    /* end of RAM */
 /* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0x200;      /* required amount of heap  */
-/* Measured stack peak is about 1.3 KB (DAP transfers, vendor commands, sampling);
-   _sbrk keeps the heap (LibXR DAP command and response pools) below this reserve. */
+/* The heap holds what the firmware allocates once at start-up and never frees: the
+   LibXR USB endpoints and the DAP command and response pools. The reserve below covers
+   that allocation, so static RAM growth fails here at link time instead of in
+   operator new at boot; raise it when the start-up allocation grows. */
+_Min_Heap_Size = 0x1700;     /* required amount of heap  */
+/* Stack for the main loop and the interrupts, with margin over the deepest path (DAP
+   transfers, vendor commands, sampling); _sbrk keeps the heap below this reserve. */
 _Min_Stack_Size = 0x800; /* required amount of stack */
 
 /* Define output sections */
