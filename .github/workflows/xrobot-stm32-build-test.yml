@@ -65,7 +65,9 @@ jobs:
             "$OBJCOPY_BIN" -O binary "$ELF_PATH" "dist/${FW_NAME}.bin"
           done
 
+          # A PR ref name is "<n>/merge"; the slash cannot be part of a file name.
           PKG_TAG="${GITHUB_REF_NAME:-snapshot}"
+          PKG_TAG="${PKG_TAG//\//-}"
           PKG_NAME="XRDAP-F103C8-${PKG_TAG}.tar.gz"
           TMP_PKG="${RUNNER_TEMP:-/tmp}/${PKG_NAME}"
           tar -C dist --exclude='*.tar.gz' -czf "${TMP_PKG}" .
