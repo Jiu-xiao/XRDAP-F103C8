@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // XR-DAP-F103: a CMSIS-DAP v2 debug probe on STLINK-V2 style STM32F103 boards, built on
 // LibXR. One USB full-speed Bulk v2 DAP interface with the XR vendor extension
-// (multi-address access, pointer chains, probe-side sampling); the LED on PA9 shows DAP
-// activity.
+// (multi-address access, pointer chains, probe-side sampling); the red/blue light on PA9
+// shows the host state and DAP activity (see status_led.hpp).
 //
 // XR-DAP-F103：基于 LibXR、跑在 STLINK-V2 形态 STM32F103 板子上的 CMSIS-DAP v2 调试探针。
 // 一个 USB 全速 Bulk v2 DAP 接口，带 XR 厂商扩展（多地址读写、指针链、探针端采样）；
-// PA9 上的指示灯显示 DAP 活动。
+// PA9 上的红蓝灯显示上位机状态和 DAP 活动（见 status_led.hpp）。
 
 #include "app_main.h"
 
@@ -19,6 +19,7 @@
 #include "libxr.hpp"
 #include "main.h"
 #include "probe_info.hpp"
+#include "status_led.hpp"
 #include "stm32_gpio.hpp"
 #include "stm32_timebase.hpp"
 #include "stm32_usb_fsdev.hpp"
@@ -54,20 +55,7 @@ constexpr size_t kFsPacket = 64;
 alignas(LibXR::HW_CACHE_LINE_SIZE) uint8_t ep0_buffer[kFsPacket];
 alignas(LibXR::HW_CACHE_LINE_SIZE) uint8_t ep1_dap_in[2 * kDapPacketSize];
 alignas(LibXR::HW_CACHE_LINE_SIZE) uint8_t ep1_dap_out[2 * kDapPacketSize];
-
-// Activity LED: TIM1 CH2 PWM (CubeMX sets ARR = 0xFFFF); the duty follows a low-pass
-// filter of "DAP IN endpoint busy".
-void UpdateActivityLed(bool busy)
-{
-  static uint32_t level = 0;
-  constexpr uint32_t kShift = 8;  // time constant ~256 loop passes
-  const uint32_t target = busy ? 0xFFFFU : 0U;
-  level = level - (level >> kShift) + (target >> kShift);
-  TIM1->CCR2 = level;
-}
 }  // namespace
-
-extern TIM_HandleTypeDef htim1;
 
 extern "C" void app_main(void)
 {
@@ -97,7 +85,7 @@ extern "C" void app_main(void)
   usb.Init(false);
   usb.Start(false);
 
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+  static StatusLed led;
   // LibXR runs DAP commands (and the vendor hook) when the application calls Step().
   // Between commands the vendor extension reads a due sampling tick, so Step does not
   // wait while sampling runs.
@@ -105,6 +93,7 @@ extern "C" void app_main(void)
   {
     vendor.Poll(dap.IsInited());
     (void)dap.Step(vendor.Sampling() ? 0 : 1);
-    UpdateActivityLed(dap.EpInBusy());
+    const auto now_ms = static_cast<uint32_t>(LibXR::Timebase::GetMilliseconds());
+    led.Update(dap.IsInited(), vendor.Activity().Read(now_ms), now_ms);
   }
 }

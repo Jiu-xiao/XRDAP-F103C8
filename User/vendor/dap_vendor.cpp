@@ -70,6 +70,7 @@ bool DapVendor::OnCommand(const uint8_t* req, uint16_t len, uint8_t* resp, uint1
   {
     return false;
   }
+  activity_.Observe(req, len, static_cast<uint32_t>(NowUs() / 1000U));
   const uint8_t cmd = req[0];
 
   if (sampler_.Active())

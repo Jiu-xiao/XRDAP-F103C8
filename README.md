@@ -21,10 +21,23 @@
 | `PB13` | SWCLK |
 | `PB14` | SWDIO |
 | `PB6` | nRESET |
-| `PA9` | 指示灯（DAP 活动时变亮） |
+| `PA9` | 状态灯（红蓝双色，PA9 高电平亮红、低电平亮蓝） |
 | `PA11` / `PA12` | USB D- / D+ |
 
 STLINK V2 标准版的 SWDIO 上通常没有上拉电阻，需要目标板上拉，或在 SWDIO 与 3.3V 之间外加上拉电阻。
+
+### 状态灯
+
+XR-DAP 系列的灯色约定是：红色表示有线（USB）连接，蓝色表示无线连接，紫色表示没有连接。本探针只有 USB，状态灯如下。其中“已连接”“运行中”由调试工具通过 DAP_HostStatus 报告，收到 DAP_Disconnect 或 5 秒内没有任何 DAP 命令时清除。
+
+| 状态 | 灯 |
+|---|---|
+| 上电 | 蓝 → 红 → 蓝扫过一次 |
+| USB 还没有被电脑配置（例如只接了电源） | 紫色常亮 |
+| USB 已连接、空闲 | 红色常亮 |
+| 调试工具已连接 | 红、紫之间往返，2 秒一次 |
+| 目标运行中 | 红、蓝之间往返，1 秒一次 |
+| 每条 DAP 命令 | 熄灭约 30 ms，命令连续时每秒约 15 次 |
 
 ## 烧录固件
 
@@ -133,6 +146,7 @@ cmake --build build/Release
 | `User/app_main.cpp` | USB 设备、DAP 实例和主循环 |
 | `User/fast_gpio.hpp` | SWD 位翻转用的寄存器级 GPIO |
 | `User/probe_info.*` | 探针身份（DAP_Info、USB 序列号） |
-| `User/vendor/` | XR 厂商扩展：命令处理、MEM-AP 访问、采样、帧缓冲 |
+| `User/status_led.*` | 状态灯 |
+| `User/vendor/` | XR 厂商扩展：命令处理、MEM-AP 访问、采样、帧缓冲、DAP 活动统计 |
 | `Core/`、`Drivers/` | STM32CubeMX 生成的初始化代码和 HAL |
 | `Middlewares/Third_Party/LibXR` | libxr 子模块 |
