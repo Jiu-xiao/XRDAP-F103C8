@@ -63,7 +63,9 @@ FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 64K
 _estack = ORIGIN(RAM) + LENGTH(RAM);    /* end of RAM */
 /* Generate a link error if heap and stack don't fit into RAM */
 _Min_Heap_Size = 0x200;      /* required amount of heap  */
-_Min_Stack_Size = 0x400; /* required amount of stack */
+/* Measured stack peak is about 1.3 KB (DAP transfers, vendor commands, sampling);
+   _sbrk keeps the heap (LibXR DAP command and response pools) below this reserve. */
+_Min_Stack_Size = 0x800; /* required amount of stack */
 
 /* Define output sections */
 SECTIONS

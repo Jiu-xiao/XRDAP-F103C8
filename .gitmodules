@@ -1,3 +1,4 @@
 [submodule "Middlewares/Third_Party/LibXR"]
 	path = Middlewares/Third_Party/LibXR
-	url = https://gitee.com/jiu-xiao/libxr
+	url = https://github.com/xrobot-org/libxr.git
+	branch = feat/xrdap-serial-transport

@@ -17,7 +17,6 @@ jobs:
       options: --user 0
     env:
       GCC_TOOLCHAIN_ROOT: /opt/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi/bin
-      CLANG_GCC_CMSIS_COMPILER: /opt/st-arm-clang
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,12 +27,15 @@ jobs:
 
       - name: configure cmake
         run: |
+          export PATH="${GCC_TOOLCHAIN_ROOT}:${PATH}"
           cmake -S . -B build -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE:STRING=cmake/starm-clang.cmake \
+            -DCMAKE_TOOLCHAIN_FILE:STRING=cmake/gcc-arm-none-eabi.cmake \
             -DCMAKE_BUILD_TYPE:STRING=Release
 
       - name: build
-        run: cmake --build build --parallel
+        run: |
+          export PATH="${GCC_TOOLCHAIN_ROOT}:${PATH}"
+          cmake --build build --parallel
 
       - name: package firmware
         shell: bash
@@ -41,12 +43,7 @@ jobs:
           set -euo pipefail
           mkdir -p dist
 
-          OBJCOPY_BIN=""
-          if command -v starm-objcopy >/dev/null 2>&1; then
-            OBJCOPY_BIN="starm-objcopy"
-          elif command -v arm-none-eabi-objcopy >/dev/null 2>&1; then
-            OBJCOPY_BIN="arm-none-eabi-objcopy"
-          fi
+          OBJCOPY_BIN="${GCC_TOOLCHAIN_ROOT}/arm-none-eabi-objcopy"
 
           for MODE in 72m 96m; do
             FW_DIR="build/XRDAP_F103C8_clock_${MODE}"
@@ -64,15 +61,13 @@ jobs:
               cp "$MAP_PATH" "dist/${FW_NAME}.map"
             fi
 
-            if [ -n "$OBJCOPY_BIN" ]; then
-              "$OBJCOPY_BIN" -O ihex "$ELF_PATH" "dist/${FW_NAME}.hex"
-              "$OBJCOPY_BIN" -O binary "$ELF_PATH" "dist/${FW_NAME}.bin"
-            else
-              echo "objcopy not found, skip generating .hex/.bin for ${FW_NAME}"
-            fi
+            "$OBJCOPY_BIN" -O ihex "$ELF_PATH" "dist/${FW_NAME}.hex"
+            "$OBJCOPY_BIN" -O binary "$ELF_PATH" "dist/${FW_NAME}.bin"
           done
 
+          # A PR ref name is "<n>/merge"; the slash cannot be part of a file name.
           PKG_TAG="${GITHUB_REF_NAME:-snapshot}"
+          PKG_TAG="${PKG_TAG//\//-}"
           PKG_NAME="XRDAP-F103C8-${PKG_TAG}.tar.gz"
           TMP_PKG="${RUNNER_TEMP:-/tmp}/${PKG_NAME}"
           tar -C dist --exclude='*.tar.gz' -czf "${TMP_PKG}" .
