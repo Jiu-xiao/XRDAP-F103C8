@@ -10,6 +10,19 @@ permissions:
   contents: read
 
 jobs:
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: build and run the host tests
+        run: |
+          cmake -S test -B build-test
+          cmake --build build-test --parallel
+          ctest --test-dir build-test --output-on-failure --no-tests=error
+
   build:
     runs-on: ubuntu-latest
     container:
