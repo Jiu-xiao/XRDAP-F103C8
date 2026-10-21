@@ -37,9 +37,10 @@ constexpr uint8_t kDapPacketCount = 4;
 // DAP_QueueCommands buffer: two packets. The LibXR default (2048) leaves the 20 KB of RAM
 // without headroom once the heap and the reserved stack are counted.
 constexpr uint16_t kDapQueueBytes = 2 * kDapPacketSize;
-// Delay-loop iterations per microsecond of the SWD half period. One iteration takes
-// about 10 CPU cycles, so the value scales with the system clock (XR_CLOCK_MODE in MHz);
-// rounded down, every SWD clock setting runs at or below the requested rate.
+// Delay-loop iterations per microsecond of the SWD half period (XR_CLOCK_MODE is the
+// system clock in MHz, set by CMake). One iteration takes about 10 CPU cycles, measured
+// on hardware from the SWD bit rate at several clock settings in both clock profiles;
+// rounded down, every setting ran at or below the requested rate.
 constexpr uint32_t kSwdLoopsPerUs = XR_CLOCK_MODE / 10;
 
 constexpr uint8_t PinIndex(uint16_t mask) { return __builtin_ctz(mask); }

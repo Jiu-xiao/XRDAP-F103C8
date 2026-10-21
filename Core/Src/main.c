@@ -31,12 +31,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+/* XR_CLOCK_MODE (72 or 96, MHz) comes from CMake (XR_CLOCK_MODE=72M/96M). */
 #define XR_CLOCK_MODE_72M 72
 #define XR_CLOCK_MODE_96M 96
-
-#ifndef XR_CLOCK_MODE
-#define XR_CLOCK_MODE XR_CLOCK_MODE_72M
-#endif
 
 /* APM32F103 extends USB prescaler to 2-bit USBDPSC[23:22]. */
 #ifndef RCC_CFGR_USBDPSC
