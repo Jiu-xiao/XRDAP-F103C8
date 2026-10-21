@@ -37,9 +37,6 @@ using namespace XrDap;
 
 constexpr uint16_t kDapPacketSize = 512;
 constexpr uint8_t kDapPacketCount = 4;
-// DAP_QueueCommands buffer: two packets. The LibXR default (2048) leaves the 20 KB of RAM
-// without headroom once the heap and the reserved stack are counted.
-constexpr uint16_t kDapQueueBytes = 2 * kDapPacketSize;
 // Delay-loop iterations per microsecond of the SWD half period (XR_CLOCK_MODE is the
 // system clock in MHz, set by CMake). One iteration takes about 10 CPU cycles, measured
 // on hardware from the SWD bit rate at several clock settings in both clock profiles;
@@ -51,8 +48,8 @@ constexpr uint8_t PinIndex(uint16_t mask) { return __builtin_ctz(mask); }
 using Swclk = F1Gpio<GPIOB_BASE, PinIndex(SWCLK_Pin)>;
 using Swdio = F1Gpio<GPIOB_BASE, PinIndex(SWDIO_Pin)>;
 using Swd = LibXR::Debug::SwdGeneralGPIO<Swclk, Swdio>;
-using DapBase = LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount,
-                                           kDapPacketSize, kDapQueueBytes>;
+using DapBase =
+    LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount, kDapPacketSize>;
 
 // The DAP class, also counting USB bus resets (libxr reports them to every class):
 // a changed count ends the USB session (and its sampling), as the host is gone.
