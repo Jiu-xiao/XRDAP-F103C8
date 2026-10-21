@@ -65,8 +65,9 @@ extern "C" void app_main(void)
 
   static Swclk swclk;
   static Swdio swdio;
+  // nRESET (PB6) is open drain and released by MX_GPIO_Init: the board pulls the line
+  // high, so the probe never resets the target unless the host asks for it.
   static LibXR::STM32GPIO nreset(NRST_GPIO_Port, NRST_Pin);
-  nreset.Write(true);
   static Swd swd(swclk, swdio, kSwdLoopsPerUs);
 
   static Dap dap(LibXR::USB::Endpoint::EPNumber::EP1, LibXR::USB::Endpoint::EPNumber::EP1,
