@@ -21,10 +21,23 @@ The probe MCU is an `STM32F103C8` or a pin-compatible F103 part (for example `AP
 | `PB13` | SWCLK |
 | `PB14` | SWDIO |
 | `PB6` | nRESET |
-| `PA9` | LED (lights up with DAP activity) |
+| `PA9` | Status light (red/blue, PA9 high lights red, low lights blue) |
 | `PA11` / `PA12` | USB D- / D+ |
 
 The STLINK V2 standard board usually has no pull-up on SWDIO; it relies on the target's pull-up, or an external pull-up between SWDIO and 3.3V.
+
+### Status light
+
+The XR-DAP family uses red for a wired (USB) link, blue for a wireless link and purple for no link. This probe has USB only; its status light shows the states below. "Connected" and "running" are reported by the debug tool through DAP_HostStatus and are cleared by DAP_Disconnect or after 5 seconds without any DAP command.
+
+| State | Light |
+|---|---|
+| Power-up | one sweep blue -> red -> blue |
+| USB not yet configured by a computer (for example on a power supply only) | solid purple |
+| USB connected, idle | solid red |
+| Debug tool connected | red and purple back and forth every 2 seconds |
+| Target running | red and blue back and forth every second |
+| Every DAP command | off for about 30 ms, about 15 times a second under steady traffic |
 
 ## Flashing the firmware
 
@@ -133,6 +146,7 @@ Each of `build/Release/XRDAP_F103C8_clock_72m/` and `build/Release/XRDAP_F103C8_
 | `User/app_main.cpp` | USB device, DAP instance and main loop |
 | `User/fast_gpio.hpp` | Register-level GPIO for the SWD bit-bang loop |
 | `User/probe_info.*` | Probe identity (DAP_Info, USB serial) |
-| `User/vendor/` | XR vendor extension: command handling, MEM-AP access, sampling, frame buffer |
+| `User/status_led.*` | Status light |
+| `User/vendor/` | XR vendor extension: command handling, MEM-AP access, sampling, frame buffer, DAP activity |
 | `Core/`, `Drivers/` | STM32CubeMX-generated initialization code and HAL |
 | `Middlewares/Third_Party/LibXR` | libxr submodule |
