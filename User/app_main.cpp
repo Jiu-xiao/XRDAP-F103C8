@@ -39,12 +39,11 @@ constexpr uint16_t kDapPacketSize = 512;
 constexpr uint8_t kDapPacketCount = 4;
 // SWD clock timing of this board in tenths of a CPU cycle (XR_CLOCK_MODE is the system
 // clock in MHz, set by CMake): one step of the delay count adds 9.0 cycles to an SWCLK
-// period, the cheapest delayed period is 13.2 cycles plus the steps, and without delay a
-// period takes at least 11.4 cycles. Measured on hardware with the cycle counter on every
-// transfer path at both clock profiles and rounded so that the SWD clock stays at or
-// below the request.
+// period, a delayed period takes 16.9 cycles plus the steps, and a period without delay
+// 11.4 cycles. Typical values measured on hardware with the cycle counter on every
+// transfer path at both clock profiles; libxr picks the step nearest to the request.
 constexpr uint32_t kCpuHz = XR_CLOCK_MODE * 1000000U;
-constexpr LibXR::Debug::SwdGpioTiming kSwdTiming{90U, 132U, 114U};
+constexpr LibXR::Debug::SwdGpioTiming kSwdTiming{90U, 169U, 114U};
 
 constexpr uint8_t PinIndex(uint16_t mask) { return __builtin_ctz(mask); }
 // SWCLK and SWDIO are PB13 and PB14 (CubeMX labels SWCLK / SWDIO).
