@@ -28,11 +28,11 @@ STLINK V2 标准版的 SWDIO 上通常没有上拉电阻，需要目标板上拉
 
 ### 状态灯
 
-XR-DAP 系列的灯色约定是：红色表示有线（USB）连接，蓝色表示无线连接，紫色表示没有连接。本探针只有 USB，状态灯如下。其中“已连接”“运行中”由调试工具通过 DAP_HostStatus 报告，收到 DAP_Disconnect 或 5 秒内没有任何 DAP 命令时清除。
+灯色按 XR-DAP 全系列共用的状态灯规则（[XRDAP-Core](https://github.com/Jiu-xiao/XRDAP-Core)）：红色表示有线（USB）连接，蓝色表示无线连接，紫色表示没有连接。本探针只有 USB，状态灯如下。其中“已连接”“运行中”由调试工具通过 DAP_HostStatus 报告，收到 DAP_Disconnect 或 5 秒内没有任何 DAP 命令时清除。
 
 | 状态 | 灯 |
 |---|---|
-| 上电 | 蓝 → 红 → 蓝扫过一次 |
+| 上电 | 红、蓝之间扫过一次 |
 | USB 还没有被电脑配置（例如只接了电源） | 紫色常亮 |
 | USB 已连接、空闲 | 红色常亮 |
 | 调试工具已连接 | 红、紫之间往返，2 秒一次 |
@@ -122,7 +122,7 @@ host_time,t,sample_tick,counter,state.wave,state.ticks
 
 ## 厂商扩展
 
-命令格式与 XRDAP-ESP 相同，见 [XRDAP-ESP 协议文档](https://github.com/Jiu-xiao/XRDAP-ESP/blob/main/docs/protocol.md) 第 3 节的 0x80 到 0x85。本固件与 ESP 版的差别：
+厂商扩展的代码来自 [XRDAP-Core](https://github.com/Jiu-xiao/XRDAP-Core)，命令格式见其[协议文档](https://github.com/Jiu-xiao/XRDAP-Core/blob/main/docs/protocol.md)第 3 节的 0x80 到 0x85。本固件与 ESP 版的差别：
 
 - 只有 USB 一种传输，采样在 USB 总线复位或拔出后停止，没有 0x86 Wi-Fi 命令；
 - 采样缓冲为 4096 字节（20 KB RAM 的限制），一帧最多 32 个条目；
@@ -147,6 +147,6 @@ cmake --build build/Release
 | `User/fast_gpio.hpp` | SWD 位翻转用的寄存器级 GPIO |
 | `User/probe_info.*` | 探针身份（DAP_Info、USB 序列号） |
 | `User/status_led.*` | 状态灯 |
-| `User/vendor/` | XR 厂商扩展：命令处理、MEM-AP 访问、采样、帧缓冲、DAP 活动统计 |
+| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core 子模块：XR 厂商扩展、状态灯规则、探针身份 |
 | `Core/`、`Drivers/` | STM32CubeMX 生成的初始化代码和 HAL |
 | `Middlewares/Third_Party/LibXR` | libxr 子模块 |

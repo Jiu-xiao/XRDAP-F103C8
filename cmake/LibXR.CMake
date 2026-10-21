@@ -20,7 +20,6 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
     PUBLIC $<TARGET_PROPERTY:xr,INTERFACE_INCLUDE_DIRECTORIES>
     PUBLIC User
-    PUBLIC User/vendor
 )
 
 # Add linked libraries
@@ -31,13 +30,16 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     xr
 )
 
-file(
-    GLOB LIBXR_USER_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/User/*.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/User/vendor/*.cpp")
+file(GLOB LIBXR_USER_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/User/*.cpp")
+
+# XR 厂商扩展、状态灯规则和探针身份 / XR vendor extension, status light rule and probe
+# identity.
+include(${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/XRDAP-Core/xrdap_core.cmake)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${XRDAP_CORE_INCLUDE_DIRS})
 
 
 target_sources(${CMAKE_PROJECT_NAME}
-    PRIVATE ${LIBXR_USER_SOURCES}
+    PRIVATE ${LIBXR_USER_SOURCES} ${XRDAP_CORE_SOURCES}
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")

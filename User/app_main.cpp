@@ -20,6 +20,7 @@
 #include "main.h"
 #include "probe_info.hpp"
 #include "status_led.hpp"
+#include "status_light.hpp"
 #include "stm32_gpio.hpp"
 #include "stm32_timebase.hpp"
 #include "stm32_usb_fsdev.hpp"
@@ -46,8 +47,8 @@ constexpr uint8_t PinIndex(uint16_t mask) { return __builtin_ctz(mask); }
 using Swclk = FastGpio<GPIOB_BASE, PinIndex(SWCLK_Pin)>;
 using Swdio = FastGpio<GPIOB_BASE, PinIndex(SWDIO_Pin)>;
 using Swd = LibXR::Debug::SwdGeneralGPIO<Swclk, Swdio>;
-using Dap = LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount, kDapPacketSize,
-                                       kDapQueueBytes>;
+using Dap = LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount,
+                                       kDapPacketSize, kDapQueueBytes>;
 
 // FSDEV packet memory is 512 B: 8 B of BTABLE per endpoint, then 64 B per direction.
 // LibXR endpoint slot memory must be aligned to HW_CACHE_LINE_SIZE.
@@ -70,7 +71,9 @@ extern "C" void app_main(void)
 
   static Dap dap(LibXR::USB::Endpoint::EPNumber::EP1, LibXR::USB::Endpoint::EPNumber::EP1,
                  swd, &nreset);
-  SetProbeInfo(dap);
+  static char serial[SerialBufferSize(kChipUidSize)];
+  FormatSerial(ChipUid(), kChipUidSize, serial);
+  SetProbeInfo(dap, {kProductName, kBoardName, serial, kFirmwareVersion});
   static DapVendor vendor(swd, kDapPacketSize);
   dap.SetCommandHook(&DapVendor::Hook, &vendor);
 
@@ -86,14 +89,25 @@ extern "C" void app_main(void)
   usb.Start(false);
 
   static StatusLed led;
+  static Light::StatusLight light(
+      static_cast<uint32_t>(LibXR::Timebase::GetMilliseconds()));
   // LibXR runs DAP commands (and the vendor hook) when the application calls Step().
   // Between commands the vendor extension reads a due sampling tick, so Step does not
-  // wait while sampling runs.
+  // wait while sampling runs. When USB goes away (bus reset or unplug) the host is gone:
+  // sampling stops and the vendor extension needs a new DAP_Connect.
+  bool usb_up = false;
   for (;;)
   {
-    vendor.Poll(dap.IsInited());
+    const bool up = dap.IsInited();
+    if (usb_up && !up)
+    {
+      vendor.OnTransportClosed();
+    }
+    usb_up = up;
+    vendor.Poll();
     (void)dap.Step(vendor.Sampling() ? 0 : 1);
     const auto now_ms = static_cast<uint32_t>(LibXR::Timebase::GetMilliseconds());
-    led.Update(dap.IsInited(), vendor.Activity().Read(now_ms), now_ms);
+    led.Show(light.Update(up ? Light::Link::WIRED : Light::Link::NONE,
+                          Light::Setting::NONE, vendor.Activity().Read(now_ms), now_ms));
   }
 }

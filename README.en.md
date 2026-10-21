@@ -28,11 +28,11 @@ The STLINK V2 standard board usually has no pull-up on SWDIO; it relies on the t
 
 ### Status light
 
-The XR-DAP family uses red for a wired (USB) link, blue for a wireless link and purple for no link. This probe has USB only; its status light shows the states below. "Connected" and "running" are reported by the debug tool through DAP_HostStatus and are cleared by DAP_Disconnect or after 5 seconds without any DAP command.
+The colours follow the status light rule shared by the XR-DAP family ([XRDAP-Core](https://github.com/Jiu-xiao/XRDAP-Core)): red for a wired (USB) link, blue for a wireless link and purple for no link. This probe has USB only; its status light shows the states below. "Connected" and "running" are reported by the debug tool through DAP_HostStatus and are cleared by DAP_Disconnect or after 5 seconds without any DAP command.
 
 | State | Light |
 |---|---|
-| Power-up | one sweep blue -> red -> blue |
+| Power-up | one sweep between red and blue |
 | USB not yet configured by a computer (for example on a power supply only) | solid purple |
 | USB connected, idle | solid red |
 | Debug tool connected | red and purple back and forth every 2 seconds |
@@ -122,7 +122,7 @@ host_time,t,sample_tick,counter,state.wave,state.ticks
 
 ## Vendor extension
 
-The command format is the same as in XRDAP-ESP; see commands 0x80 to 0x85 in section 3 of the [XRDAP-ESP protocol document](https://github.com/Jiu-xiao/XRDAP-ESP/blob/main/docs/protocol.en.md). This firmware differs from the ESP version as follows:
+The vendor extension code comes from [XRDAP-Core](https://github.com/Jiu-xiao/XRDAP-Core); see commands 0x80 to 0x85 in section 3 of its [protocol document](https://github.com/Jiu-xiao/XRDAP-Core/blob/main/docs/protocol.en.md). This firmware differs from the ESP version as follows:
 
 - USB is the only transport. Sampling stops after a USB bus reset or unplug, and there is no 0x86 Wi-Fi command.
 - The sampling buffer is 4096 bytes (limited by the 20 KB of RAM), with at most 32 items per frame.
@@ -147,6 +147,6 @@ Each of `build/Release/XRDAP_F103C8_clock_72m/` and `build/Release/XRDAP_F103C8_
 | `User/fast_gpio.hpp` | Register-level GPIO for the SWD bit-bang loop |
 | `User/probe_info.*` | Probe identity (DAP_Info, USB serial) |
 | `User/status_led.*` | Status light |
-| `User/vendor/` | XR vendor extension: command handling, MEM-AP access, sampling, frame buffer, DAP activity |
+| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core submodule: XR vendor extension, status light rule, probe identity |
 | `Core/`, `Drivers/` | STM32CubeMX-generated initialization code and HAL |
 | `Middlewares/Third_Party/LibXR` | libxr submodule |
