@@ -345,15 +345,19 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(NRST_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* D+ (PA12) has a fixed 1.5 kOhm pull-up on these boards, so the host would not see
+     a reset or a re-flash as a reconnect. Holding D+ low for 10 ms makes the host see a
+     disconnect and enumerate the probe again. PA12 is then released (input); the USB
+     peripheral takes the pin over once it is enabled. */
   GPIO_InitStruct.Pin = GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   HAL_Delay(10);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET);
-  HAL_Delay(10);
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
