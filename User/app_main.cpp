@@ -37,11 +37,14 @@ using namespace XrDap;
 
 constexpr uint16_t kDapPacketSize = 512;
 constexpr uint8_t kDapPacketCount = 4;
-// Delay-loop iterations per microsecond of the SWD half period (XR_CLOCK_MODE is the
-// system clock in MHz, set by CMake). One iteration takes about 10 CPU cycles, measured
-// on hardware from the SWD bit rate at several clock settings in both clock profiles;
-// rounded down, every setting ran at or below the requested rate.
-constexpr uint32_t kSwdLoopsPerUs = XR_CLOCK_MODE / 10;
+// SWD clock timing of this board in tenths of a CPU cycle (XR_CLOCK_MODE is the system
+// clock in MHz, set by CMake): one step of the delay count adds 9.0 cycles to an SWCLK
+// period, the cheapest delayed period is 13.2 cycles plus the steps, and without delay a
+// period takes at least 11.4 cycles. Measured on hardware with the cycle counter on every
+// transfer path at both clock profiles and rounded so that the SWD clock stays at or
+// below the request.
+constexpr uint32_t kCpuHz = XR_CLOCK_MODE * 1000000U;
+constexpr LibXR::Debug::SwdGpioTiming kSwdTiming{90U, 132U, 114U};
 
 constexpr uint8_t PinIndex(uint16_t mask) { return __builtin_ctz(mask); }
 // SWCLK and SWDIO are PB13 and PB14 (CubeMX labels SWCLK / SWDIO).
@@ -92,7 +95,7 @@ extern "C" void app_main(void)
   // nRESET (PB6) is open drain and released by MX_GPIO_Init: the board pulls the line
   // high, so the probe never resets the target unless the host asks for it.
   static LibXR::STM32GPIO nreset(NRST_GPIO_Port, NRST_Pin);
-  static Swd swd(swclk, swdio, kSwdLoopsPerUs);
+  static Swd swd(swclk, swdio, kCpuHz, kSwdTiming);
 
   static UsbDap dap(LibXR::USB::Endpoint::EPNumber::EP1,
                     LibXR::USB::Endpoint::EPNumber::EP1, swd, &nreset);
