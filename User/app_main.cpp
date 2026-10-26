@@ -77,6 +77,8 @@ class UsbDap final : public DapBase
 };
 
 // FSDEV packet memory is 512 B: 8 B of BTABLE per endpoint, then 64 B per direction.
+// The 64 passed with each buffer below is that packet memory share; the arrays are the
+// LibXR slot memory in SRAM, two slots of one whole DAP packet each for EP1.
 // LibXR endpoint slot memory must be aligned to HW_CACHE_LINE_SIZE.
 constexpr size_t kFsPacket = 64;
 alignas(LibXR::HW_CACHE_LINE_SIZE) uint8_t ep0_buffer[kFsPacket];
