@@ -35,7 +35,9 @@
 #define XR_CLOCK_MODE_72M 72
 #define XR_CLOCK_MODE_96M 96
 
-/* APM32F103 extends USB prescaler to 2-bit USBDPSC[23:22]. */
+/* APM32F103 extends USB prescaler to 2-bit USBDPSC[23:22]. 96M is for APM32-class
+ * parts only: a genuine STM32F103 runs at most 72 MHz, bit 23 is reserved there, and its
+ * /1 or /1.5 USB prescaler cannot make 48 MHz from 96 MHz. */
 #ifndef RCC_CFGR_USBDPSC
 #define RCC_CFGR_USBDPSC (0x3UL << 22)
 #endif
