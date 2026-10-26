@@ -46,7 +46,7 @@ The release holds two images that differ only in the system clock:
 | Image | System clock | For |
 |---|---|---|
 | `XRDAP-F103C8-72m.bin` | 72 MHz | STM32F103C8 |
-| `XRDAP-F103C8-96m.bin` | 96 MHz | APM32F103C8 and other compatible parts that run above 72 MHz |
+| `XRDAP-F103C8-96m.bin` | 96 MHz | APM32F103C8 and other compatible parts that run above 72 MHz; not a genuine STM32F103 (72 MHz at most, and no 48 MHz USB clock from 96 MHz) |
 
 The firmware starts at `0x08000000` and is written through the board's own SWD port (the SWCLK, SWDIO, GND and 3.3V pads) with another debug probe, for example a J-Link:
 

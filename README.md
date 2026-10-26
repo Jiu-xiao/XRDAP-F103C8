@@ -46,7 +46,7 @@ Release 中有两个镜像，区别只在系统时钟：
 | 镜像 | 系统时钟 | 适用 |
 |---|---|---|
 | `XRDAP-F103C8-72m.bin` | 72 MHz | STM32F103C8 |
-| `XRDAP-F103C8-96m.bin` | 96 MHz | APM32F103C8 等可超频的兼容型号 |
+| `XRDAP-F103C8-96m.bin` | 96 MHz | APM32F103C8 等可超频的兼容型号；原版 STM32F103 不能用（最高 72 MHz，也得不到 USB 需要的 48 MHz） |
 
 固件从 `0x08000000` 开始，通过板子上的 SWD 调试口（SWCLK、SWDIO、GND、3.3V 四个焊盘）用另一个调试器烧录，例如 J-Link：
 
