@@ -24,7 +24,7 @@
 #include "tick_timer.hpp"
 #include "xrdap/activity/dap_activity.hpp"
 #include "xrdap/light/status_light.hpp"
-#include "xrdap/probe/chip_uid.hpp"
+#include "chip_uid.hpp"
 #include "xrdap/probe/family.hpp"
 #include "xrdap/session/executor.hpp"
 #include "xrdap/session/session_owner.hpp"
@@ -100,8 +100,8 @@ extern "C" void app_main(void)
 
   static UsbDap dap(LibXR::USB::Endpoint::EPNumber::EP1,
                     LibXR::USB::Endpoint::EPNumber::EP1, swd, &nreset);
-  static char serial[SerialBufferSize(kF1ChipUidBytes)];
-  FormatSerial(F1ChipUid(), kF1ChipUidBytes, serial);
+  static char serial[SerialBufferSize(kChipUidBytes)];
+  FormatSerial(ChipUid(), kChipUidBytes, serial);
   SetProbeInfo(dap, {kProductName, kBoardName, serial, kFirmwareVersion});
   // USB is the only transport, so the USB host always owns the session; it ends on
   // DAP_Disconnect and on a USB bus reset.
@@ -120,7 +120,7 @@ extern "C" void app_main(void)
       {{ep0_buffer, kFsPacket}, {ep1_dap_in, kFsPacket}},
       LibXR::USB::DeviceDescriptor::PacketSize0::SIZE_64, Family::kUsbVid,
       Family::kUsbPid, Family::kBcdF103, {&kStrings}, {{&dap}},
-      {F1ChipUid(), kF1ChipUidBytes});
+      {ChipUid(), kChipUidBytes});
   usb.Init(false);
   usb.Start(false);
 
