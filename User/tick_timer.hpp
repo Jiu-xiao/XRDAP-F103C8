@@ -7,7 +7,7 @@
 //   结束时记一拍。
 //   周期短于 kMinIrqUs 时，每 m 个周期中断一次、记 m 拍，避免中断占满 CPU；这么短的
 //   周期本来就采不过来，采样按跳拍处理。
-// Start 和 Stop 在主循环里调用（采样的执行上下文），中断只计数。
+// Start 和 Stop 在主循环里调用（执行上下文），中断只计数并在该采时叫醒主循环。
 //
 // Sampling tick timer (XRDAP-Core's TickTimer) on TIM2. TIM2 counts at 1 MHz and its
 // update interrupt calls DapVendor::OnTickIsr(). CubeMX does not configure TIM2, so its
@@ -17,8 +17,8 @@
 //   A period shorter than kMinIrqUs interrupts once every m periods and counts m ticks,
 //   so the interrupt cannot take the whole CPU; such periods cannot be sampled anyway
 //   and sampling counts the ticks as skipped.
-// Start and Stop are called from the main loop (the sampling context); the interrupt
-// only counts.
+// Start and Stop are called from the main loop (the execution context); the interrupt
+// only counts and wakes the main loop when a tick is due.
 
 #include <cstdint>
 

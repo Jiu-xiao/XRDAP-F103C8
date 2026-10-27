@@ -124,13 +124,12 @@ extern "C" void app_main(void)
   static StatusLed led;
   static Light::StatusLight light(
       static_cast<uint32_t>(LibXR::Timebase::GetMilliseconds()));
-  // LibXR runs DAP commands (and the executor's hook) when the executor calls Step().
-  // Between commands the vendor extension samples a tick when TIM2 counted one, so Step
-  // does not wait while sampling runs.
+  // The main loop is the execution context: Run() steps USB, samples one frame when TIM2
+  // counted a tick, and waits (woken by USB, or by the tick interrupt) when it has done
+  // nothing.
   for (;;)
   {
-    vendor.Poll(tick);
-    (void)exec.StepUsb(vendor.Sampling() ? 0 : 1);
+    exec.Run(tick, 1);
     const auto now_ms = static_cast<uint32_t>(LibXR::Timebase::GetMilliseconds());
     const auto link = dap.IsInited() ? Light::Link::WIRED : Light::Link::NONE;
     led.Show(light.Update(link, Light::Setting::NONE, activity.Read(now_ms), now_ms));
