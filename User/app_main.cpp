@@ -27,7 +27,6 @@
 #include "chip_uid.hpp"
 #include "xrdap/probe/family.hpp"
 #include "xrdap/session/executor.hpp"
-#include "xrdap/session/session_owner.hpp"
 #include "xrdap/swd/f1_gpio.hpp"
 #include "xrdap/vendor/dap_vendor.hpp"
 
@@ -54,7 +53,7 @@ using DapBase =
     LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount, kDapPacketSize>;
 
 // The DAP class, also counting USB bus resets (libxr reports them to every class):
-// a changed count ends the USB session (and its sampling), as the host is gone.
+// a changed count ends a connection on USB (and its sampling), as the host is gone.
 class UsbDap final : public DapBase
 {
  public:
@@ -103,13 +102,11 @@ extern "C" void app_main(void)
   static char serial[SerialBufferSize(kChipUidBytes)];
   FormatSerial(ChipUid(), kChipUidBytes, serial);
   SetProbeInfo(dap, {kProductName, kBoardName, serial, kFirmwareVersion});
-  // USB is the only transport, so the USB host always owns the session; it ends on
-  // DAP_Disconnect and on a USB bus reset.
-  static SessionOwner session;
-  session.SetUsbResetSource(&UsbDap::BusResets, &dap);
-  static DapVendor vendor(swd, session);
+  // USB is the only link: the connection ends on DAP_Disconnect and on a USB bus reset.
+  static DapVendor vendor(swd);
+  vendor.SetUsbResetSource(&UsbDap::BusResets, &dap);
   static DapActivity activity;
-  static Executor<UsbDap> exec(dap, session, vendor, activity);
+  static Executor<UsbDap> exec(dap, vendor, activity);
   static Tim2TickTimer tick(vendor);
 
   static constexpr auto kStrings = LibXR::USB::DescriptorStrings::MakeLanguagePack(
