@@ -10,8 +10,17 @@
 
 #include <cstdint>
 
+namespace XrDap::Vendor
+{
+class LoopSampling;
+}  // namespace XrDap::Vendor
+
 namespace XrDap::Port
 {
+/// 单循环采样：主循环在两条命令之间调用 Poll / Single-loop sampling: the main loop calls Poll
+/// between commands.
+using SamplerPolicy = Vendor::LoopSampling;
+
 
 /// 采样帧缓冲的字节数，2 的幂 / Bytes of the sample frame buffer, a power of two.
 inline constexpr uint32_t kRingBytes = 4096U;
