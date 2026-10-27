@@ -25,9 +25,9 @@
 #include "xrdap/activity/dap_activity.hpp"
 #include "xrdap/light/status_light.hpp"
 #include "chip_uid.hpp"
+#include "f1_gpio.hpp"
 #include "xrdap/probe/family.hpp"
 #include "xrdap/session/executor.hpp"
-#include "xrdap/swd/f1_gpio.hpp"
 #include "xrdap/vendor/dap_vendor.hpp"
 
 namespace
