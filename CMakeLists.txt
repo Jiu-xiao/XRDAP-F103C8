@@ -119,6 +119,7 @@ function(xr_add_clock_build_target target_name clock_mode)
         -B ${_clock_build_dir}
         -G ${CMAKE_GENERATOR}
         -DXR_CLOCK_MODE=${clock_mode}
+        -DXRDAP_GIT_REV=${XRDAP_GIT_REV}
     )
 
     if(CMAKE_BUILD_TYPE)
