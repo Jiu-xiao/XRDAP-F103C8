@@ -68,6 +68,8 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="6199", MODE="0666"
 openocd -f interface/cmsis-dap.cfg -c "adapter serial XRobot-XRDAP-<UID>" -f target/<目标>.cfg
 ```
 
+Windows 上 probe-rs 0.32.0 及更早的版本列不出这块探针：它是只有一个接口的 USB 设备，这些版本只在复合设备上读接口名，认不出 CMSIS-DAP。probe-rs 主分支已经修好（[probe-rs#4500](https://github.com/probe-rs/probe-rs/pull/4500)），0.32.0 之后的版本可用；pyOCD、OpenOCD 不受影响。
+
 `xrdap list` 列出探针：
 
 ```

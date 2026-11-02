@@ -68,6 +68,8 @@ Debug tools use it as a CMSIS-DAP v2 probe, for example OpenOCD:
 openocd -f interface/cmsis-dap.cfg -c "adapter serial XRobot-XRDAP-<UID>" -f target/<target>.cfg
 ```
 
+On Windows, probe-rs 0.32.0 and earlier do not list this probe: it is a USB device with a single interface, and these versions read interface names only on composite devices, so they do not recognise it as CMSIS-DAP. The probe-rs main branch has the fix ([probe-rs#4500](https://github.com/probe-rs/probe-rs/pull/4500)); releases after 0.32.0 work. pyOCD and OpenOCD are not affected.
+
 `xrdap list` lists the probes:
 
 ```
