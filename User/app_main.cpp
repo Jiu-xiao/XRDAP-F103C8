@@ -36,11 +36,13 @@ using namespace XrDap;
 
 constexpr uint16_t kDapPacketSize = 512;
 constexpr uint8_t kDapPacketCount = 4;
-// SWD clock timing of this board in tenths of a CPU cycle (XR_CLOCK_MODE is the system
-// clock in MHz, set by CMake): one step of the delay count adds 9.0 cycles to an SWCLK
-// period, a delayed period takes 16.9 cycles plus the steps, and a period without delay
-// 11.4 cycles. Typical values measured on hardware with the cycle counter on every
-// transfer path at both clock profiles; libxr picks the step nearest to the request.
+// 本板 SWD 时钟的标定值，单位为 1/10 个 CPU 周期（XR_CLOCK_MODE 是系统时钟的 MHz 数，由
+// CMake 设定）：依次为延时计数每加 1 给 SWCLK 周期增加的部分、有延时的周期的固定部分、
+// 无延时的周期。libxr 据此选出最接近请求频率的延时计数。
+// Calibration of the SWD clock on this board, in tenths of a CPU cycle (XR_CLOCK_MODE is
+// the system clock in MHz, set by CMake): what one step of the delay count adds to an
+// SWCLK period, the fixed part of a delayed period, and a period without delay. libxr
+// picks the step nearest to the requested rate from them.
 constexpr uint32_t kCpuHz = XR_CLOCK_MODE * 1000000U;
 constexpr LibXR::Debug::SwdGpioTiming kSwdTiming{90U, 169U, 114U};
 

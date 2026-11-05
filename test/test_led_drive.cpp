@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
 // Host tests of led_drive.hpp. Expected values come from:
-//   [hw]    the board: PA9 high lights red, low lights blue, half duty looks purple;
 //   [rule]  XRDAP-Core status_light.hpp: Frame::level 0 is off, and an on/off-only LED is
 //           dark while Frame::pulse is above 500; levels and shares are in permille;
 //   [user]  the family colours: red wired, blue wireless, purple no link.
@@ -34,7 +33,7 @@ int main()
   using XrDap::ToLedDrive;
   namespace Light = XrDap::Light;
 
-  // [hw][user] the three family colours map to the three drive points of the light.
+  // [user] the three family colours map to the three drive points of the light.
   Check(RedShare(Light::kRed) == 1000U, "red (wired) drives PA9 high all the time");
   Check(RedShare(Light::kBlue) == 0U, "blue (wireless) drives PA9 low all the time");
   Check(RedShare(Light::kPurple) == 500U, "purple (no link) is half duty");
