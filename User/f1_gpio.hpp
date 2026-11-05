@@ -14,20 +14,10 @@
 #include <cstdint>
 
 #include "libxr_def.hpp"
+#include "stm32f1xx.h"
 
 namespace XrDap
 {
-
-/// 一个 GPIO 端口的寄存器 / Registers of one GPIO port.
-struct F1GpioRegs
-{
-  volatile uint32_t cfg_low;   ///< CRL / CFGLR
-  volatile uint32_t cfg_high;  ///< CRH / CFGHR
-  volatile uint32_t input;     ///< IDR / INDR
-  volatile uint32_t output;    ///< ODR / OUTDR
-  volatile uint32_t set;       ///< BSRR / BSHR
-  volatile uint32_t reset;     ///< BRR / BCR
-};
 
 /// @brief 一个引脚 / One pin.
 /// @tparam PORT 端口寄存器基址 / Port register base address.
@@ -79,7 +69,7 @@ class F1Gpio
         }
         break;
     }
-    volatile uint32_t& cfg = (PIN < 8) ? Regs()->cfg_low : Regs()->cfg_high;
+    volatile uint32_t& cfg = (PIN < 8) ? Regs()->CRL : Regs()->CRH;
     cfg = (cfg & ~(0xFU << kShift)) | (mode << kShift);
     return LibXR::ErrorCode::OK;
   }
@@ -88,18 +78,15 @@ class F1Gpio
   {
     if (high)
     {
-      Regs()->set = kMask;
+      Regs()->BSRR = kMask;
     }
     else
     {
-      Regs()->reset = kMask;
+      Regs()->BRR = kMask;
     }
   }
 
-  [[gnu::always_inline]] inline bool Read() const
-  {
-    return (Regs()->input & kMask) != 0U;
-  }
+  [[gnu::always_inline]] inline bool Read() const { return (Regs()->IDR & kMask) != 0U; }
 
  private:
   static constexpr uint32_t kInputFloating = 0x4U;
@@ -109,7 +96,7 @@ class F1Gpio
   static constexpr uint32_t kShift = (PIN % 8U) * 4U;
   static constexpr uint32_t kMask = 1U << PIN;
 
-  static F1GpioRegs* Regs() { return reinterpret_cast<F1GpioRegs*>(PORT); }
+  static GPIO_TypeDef* Regs() { return reinterpret_cast<GPIO_TypeDef*>(PORT); }
 };
 
 }  // namespace XrDap
