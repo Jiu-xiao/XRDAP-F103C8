@@ -26,9 +26,6 @@ inline constexpr uint32_t kPermilleFull = 1000U;
 /// 千分比的一半，红蓝各半（紫色）/ Half of full scale in permille, half red and half
 /// blue (purple).
 inline constexpr uint32_t kPermilleHalf = 500U;
-/// 活动脉冲高于此值时只能亮灭的灯熄灭 / An on/off-only light is dark while the activity
-/// pulse is above this value.
-inline constexpr uint32_t kPulseDarkAbove = 500U;
 
 /// 双色灯的一次驱动 / One drive setting of the two-colour light.
 struct LedDrive
@@ -57,8 +54,7 @@ constexpr uint32_t RedShare(Light::Rgb c)
 /// 一帧换成这颗灯的驱动 / One frame to the drive of this light.
 constexpr LedDrive ToLedDrive(const Light::Frame& frame)
 {
-  return LedDrive{frame.level != 0U && frame.pulse <= kPulseDarkAbove,
-                  RedShare(frame.color)};
+  return LedDrive{Light::LitOnOff(frame), RedShare(frame.color)};
 }
 
 }  // namespace XrDap
