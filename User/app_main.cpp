@@ -29,6 +29,7 @@
 #include "xrdap/probe/family.hpp"
 #include "xrdap/session/executor.hpp"
 #include "xrdap/vendor/dap_vendor.hpp"
+#include "xrdap/vendor/reset_counting_usb.hpp"
 
 namespace
 {
@@ -54,28 +55,11 @@ using Swd = LibXR::Debug::SwdGeneralGPIO<Swclk, Swdio>;
 using DapBase =
     LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount, kDapPacketSize>;
 
-// The DAP class, also counting USB bus resets (libxr reports them to every class):
-// a changed count ends a connection on USB (and its sampling), as the host is gone.
-class UsbDap final : public DapBase
-{
- public:
-  using DapBase::DapBase;
-
-  static uint32_t BusResets(void* ctx) { return static_cast<UsbDap*>(ctx)->resets_; }
-
- private:
-  void OnDeviceEvent(bool in_isr, LibXR::USB::DeviceEvent event,
-                     uint8_t endpoint) override
-  {
-    if (event == LibXR::USB::DeviceEvent::RESET)
-    {
-      resets_ = resets_ + 1U;
-    }
-    DapBase::OnDeviceEvent(in_isr, event, endpoint);
-  }
-
-  volatile uint32_t resets_ = 0;  // written by the USB interrupt, read by the main loop
-};
+// 同时数 USB 总线复位的 DAP 类：计数变了，USB 上的连接（及其采样）就结束，因为上位机已
+// 不在。
+// The DAP class, also counting USB bus resets: a changed count ends a connection on USB
+// (and its sampling), as the host is gone.
+using UsbDap = ResetCountingUsb<DapBase>;
 
 // FSDEV packet memory is 512 B: 8 B of BTABLE per endpoint, then 64 B per direction.
 // The 64 passed with each buffer below is that packet memory share; the arrays are the
@@ -106,7 +90,7 @@ extern "C" void app_main(void)
   SetProbeInfo(dap, {kProductName, kBoardName, serial, kFirmwareVersion});
   // USB is the only link: the connection ends on DAP_Disconnect and on a USB bus reset.
   static DapVendor vendor(swd);
-  vendor.SetUsbResetSource(&UsbDap::BusResets, &dap);
+  vendor.SetUsbResetSource(&dap.BusResets());
   static DapActivity activity;
   static Executor<UsbDap> exec(dap, vendor, activity);
   static Tim2TickTimer tick(vendor);
