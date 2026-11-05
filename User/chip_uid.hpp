@@ -9,6 +9,8 @@
 
 #include <cstdint>
 
+#include "stm32f1xx.h"
+
 namespace XrDap
 {
 
@@ -17,6 +19,6 @@ inline constexpr uint32_t kChipUidBytes = 12U;
 
 /// 唯一标识（只读，可在任何上下文读）/ The unique id (read-only, readable from any
 /// context).
-inline const uint8_t* ChipUid() { return reinterpret_cast<const uint8_t*>(0x1FFFF7E8U); }
+inline const uint8_t* ChipUid() { return reinterpret_cast<const uint8_t*>(UID_BASE); }
 
 }  // namespace XrDap
