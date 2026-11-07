@@ -2,14 +2,24 @@ name: xrobot stm32 build test
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main", "master", "refactor/**"]
+    tags: ["v*"]
   pull_request:
-    branches: ["main", "master"]
 
 permissions:
   contents: read
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: clang-format 21.1.8, without the CubeMX code in Core/
+        run: |
+          pip install clang-format==21.1.8
+          git ls-files 'User/*.hpp' 'User/*.cpp' 'User/*.h' 'test/*.cpp' | xargs clang-format --dry-run --Werror
+
   host-tests:
     runs-on: ubuntu-latest
     steps:
