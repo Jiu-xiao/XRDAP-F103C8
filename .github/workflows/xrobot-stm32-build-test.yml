@@ -71,18 +71,18 @@ jobs:
           for MODE in 72m 96m; do
             FW_DIR="build/XRDAP_F103C8_clock_${MODE}"
             ELF_PATH="${FW_DIR}/XRDAP-F103C8.elf"
-            MAP_PATH="${FW_DIR}/XRDAP-F103C8.map"
+            MAP_PATH="${FW_DIR}/XRDAP_F103C8.map"
             FW_NAME="XRDAP-F103C8-${MODE}"
 
-            if [ ! -f "$ELF_PATH" ]; then
-              echo "Missing firmware: $ELF_PATH"
-              exit 1
-            fi
+            for FILE in "$ELF_PATH" "$MAP_PATH"; do
+              if [ ! -f "$FILE" ]; then
+                echo "Missing build output: $FILE"
+                exit 1
+              fi
+            done
 
             cp "$ELF_PATH" "dist/${FW_NAME}.elf"
-            if [ -f "$MAP_PATH" ]; then
-              cp "$MAP_PATH" "dist/${FW_NAME}.map"
-            fi
+            cp "$MAP_PATH" "dist/${FW_NAME}.map"
 
             "$OBJCOPY_BIN" -O ihex "$ELF_PATH" "dist/${FW_NAME}.hex"
             "$OBJCOPY_BIN" -O binary "$ELF_PATH" "dist/${FW_NAME}.bin"
