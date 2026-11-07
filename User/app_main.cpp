@@ -24,11 +24,18 @@
 #include "tick_timer.hpp"
 #include "xrdap/activity/dap_activity.hpp"
 #include "xrdap/light/status_light.hpp"
+
+// chip_uid.hpp 和 f1_gpio.hpp 带进 CMSIS，要在 stm32_usb_fsdev.hpp 之后：CMSIS 的 USB
+// 宏和命名空间 LibXR::USB 同名，stm32_usb_fsdev.hpp 读过这个宏之后取消它的定义。
+// chip_uid.hpp and f1_gpio.hpp bring in CMSIS and have to come after stm32_usb_fsdev.hpp:
+// the CMSIS USB macro has the name of the namespace LibXR::USB, and stm32_usb_fsdev.hpp
+// undefines it once it has read it.
 #include "chip_uid.hpp"
 #include "f1_gpio.hpp"
 #include "xrdap/probe/family.hpp"
 #include "xrdap/session/executor.hpp"
 #include "xrdap/vendor/dap_vendor.hpp"
+#include "xrdap/vendor/reset_counting_usb.hpp"
 
 namespace
 {
@@ -36,11 +43,13 @@ using namespace XrDap;
 
 constexpr uint16_t kDapPacketSize = 512;
 constexpr uint8_t kDapPacketCount = 4;
-// SWD clock timing of this board in tenths of a CPU cycle (XR_CLOCK_MODE is the system
-// clock in MHz, set by CMake): one step of the delay count adds 9.0 cycles to an SWCLK
-// period, a delayed period takes 16.9 cycles plus the steps, and a period without delay
-// 11.4 cycles. Typical values measured on hardware with the cycle counter on every
-// transfer path at both clock profiles; libxr picks the step nearest to the request.
+// 本板 SWD 时钟的标定值，单位为 1/10 个 CPU 周期（XR_CLOCK_MODE 是系统时钟的 MHz 数，由
+// CMake 设定）：依次为延时计数每加 1 给 SWCLK 周期增加的部分、有延时的周期的固定部分、
+// 无延时的周期。libxr 据此选出最接近请求频率的延时计数。
+// Calibration of the SWD clock on this board, in tenths of a CPU cycle (XR_CLOCK_MODE is
+// the system clock in MHz, set by CMake): what one step of the delay count adds to an
+// SWCLK period, the fixed part of a delayed period, and a period without delay. libxr
+// picks the step nearest to the requested rate from them.
 constexpr uint32_t kCpuHz = XR_CLOCK_MODE * 1000000U;
 constexpr LibXR::Debug::SwdGpioTiming kSwdTiming{90U, 169U, 114U};
 
@@ -52,28 +61,11 @@ using Swd = LibXR::Debug::SwdGeneralGPIO<Swclk, Swdio>;
 using DapBase =
     LibXR::USB::DapLinkV2Class<Swd, kDapPacketSize, kDapPacketCount, kDapPacketSize>;
 
-// The DAP class, also counting USB bus resets (libxr reports them to every class):
-// a changed count ends a connection on USB (and its sampling), as the host is gone.
-class UsbDap final : public DapBase
-{
- public:
-  using DapBase::DapBase;
-
-  static uint32_t BusResets(void* ctx) { return static_cast<UsbDap*>(ctx)->resets_; }
-
- private:
-  void OnDeviceEvent(bool in_isr, LibXR::USB::DeviceEvent event,
-                     uint8_t endpoint) override
-  {
-    if (event == LibXR::USB::DeviceEvent::RESET)
-    {
-      resets_ = resets_ + 1U;
-    }
-    DapBase::OnDeviceEvent(in_isr, event, endpoint);
-  }
-
-  volatile uint32_t resets_ = 0;  // written by the USB interrupt, read by the main loop
-};
+// 同时数 USB 总线复位的 DAP 类：计数变了，USB 上的连接（及其采样）就结束，因为上位机已
+// 不在。
+// The DAP class, also counting USB bus resets: a changed count ends a connection on USB
+// (and its sampling), as the host is gone.
+using UsbDap = ResetCountingUsb<DapBase>;
 
 // FSDEV packet memory is 512 B: 8 B of BTABLE per endpoint, then 64 B per direction.
 // The 64 passed with each buffer below is that packet memory share; the arrays are the
@@ -104,7 +96,7 @@ extern "C" void app_main(void)
   SetProbeInfo(dap, {kProductName, kBoardName, serial, kFirmwareVersion});
   // USB is the only link: the connection ends on DAP_Disconnect and on a USB bus reset.
   static DapVendor vendor(swd);
-  vendor.SetUsbResetSource(&UsbDap::BusResets, &dap);
+  vendor.SetUsbResetSource(&dap.BusResets());
   static DapActivity activity;
   static Executor<UsbDap> exec(dap, vendor, activity);
   static Tim2TickTimer tick(vendor);

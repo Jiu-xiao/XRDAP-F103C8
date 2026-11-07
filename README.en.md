@@ -70,12 +70,12 @@ openocd -f interface/cmsis-dap.cfg -c "adapter serial XRobot-XRDAP-<UID>" -f tar
 
 On Windows, probe-rs 0.32.0 and earlier do not list this probe: it is a USB device with a single interface, and these versions read interface names only on composite devices, so they do not recognise it as CMSIS-DAP. The probe-rs main branch has the fix ([probe-rs#4500](https://github.com/probe-rs/probe-rs/pull/4500)); releases after 0.32.0 work. pyOCD and OpenOCD are not affected.
 
-`xrdap list` lists the probes:
+`xrdap` needs XRDAP-Host 0.6.0 or later, because the vendor extension of this firmware is protocol version 2. `xrdap list` lists the probes:
 
 ```
 $ xrdap list
 XRobot-XRDAP-<UID>  XR-DAP-F103 CMSIS-DAP
-    USB XRobot-XRDAP-<UID>    --probe usb:XRobot-XRDAP-<UID>
+    USB XRobot-XRDAP-<UID>    -p usb:XRobot-XRDAP-<UID>
 ```
 
 `xrdap info` shows DAP_Info, the capabilities of the vendor extension, and the target's DPIDR and core (only the probe part is shown below; `xrdap` prints Chinese text):
@@ -85,8 +85,9 @@ $ xrdap info -p <last digits of the UID>
 连接：USB XRobot-XRDAP-<UID>
 探针：XRobot XR-DAP-F103，序列号 XRobot-XRDAP-<UID>，固件 0.6.0+g<commit>
 CMSIS-DAP：2.0.0，包长 512 字节，最多 4 个包在途
-厂商扩展：版本 1，功能 READ、WRITE、采样、8 字节访问（0x0F）
+厂商扩展：版本 2，功能 READ、WRITE、采样、8 字节访问（0x4F）
   每次最多 32 个条目，最多 8 级指针，采样缓冲 4096 字节
+  探针时间 <seconds> s
 ```
 
 `xrdap read` and `write` access target memory by variable name from an ELF built with `-g`. The target program `app.elf` below has a global `counter` and a struct `state`:
@@ -151,7 +152,10 @@ ctest --test-dir build-test
 | `User/probe_info.*` | Probe identity (DAP_Info, USB serial) |
 | `User/status_led.*` | Status light (PA9, TIM1) |
 | `User/led_drive.hpp` | One frame of the status light rule to on/off and red share of this two-colour light, without hardware |
+| `User/f1_gpio.hpp` | Register-level GPIO for SWD |
+| `User/chip_uid.hpp` | The chip's 96-bit unique id, used as the UID in the serial number |
+| `User/xrdap_port.hpp` | Platform part of XRDAP-Core: the size of the sampling buffer |
 | `test/` | Host tests |
-| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core submodule: XR vendor extension, session and command execution, status light rule, probe identity, register-level GPIO for SWD |
+| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core submodule: XR vendor extension, session and command execution, status light rule, probe identity |
 | `Core/`, `Drivers/` | STM32CubeMX-generated initialization code and HAL |
 | `Middlewares/Third_Party/LibXR` | libxr submodule |

@@ -2,14 +2,24 @@ name: xrobot stm32 build test
 
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main", "master", "refactor/**"]
+    tags: ["v*"]
   pull_request:
-    branches: ["main", "master"]
 
 permissions:
   contents: read
 
 jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: clang-format 21.1.8, without the CubeMX code in Core/
+        run: |
+          pip install clang-format==21.1.8
+          git ls-files 'User/*.hpp' 'User/*.cpp' 'User/*.h' 'test/*.cpp' | xargs clang-format --dry-run --Werror
+
   host-tests:
     runs-on: ubuntu-latest
     steps:
@@ -61,18 +71,18 @@ jobs:
           for MODE in 72m 96m; do
             FW_DIR="build/XRDAP_F103C8_clock_${MODE}"
             ELF_PATH="${FW_DIR}/XRDAP-F103C8.elf"
-            MAP_PATH="${FW_DIR}/XRDAP-F103C8.map"
+            MAP_PATH="${FW_DIR}/XRDAP_F103C8.map"
             FW_NAME="XRDAP-F103C8-${MODE}"
 
-            if [ ! -f "$ELF_PATH" ]; then
-              echo "Missing firmware: $ELF_PATH"
-              exit 1
-            fi
+            for FILE in "$ELF_PATH" "$MAP_PATH"; do
+              if [ ! -f "$FILE" ]; then
+                echo "Missing build output: $FILE"
+                exit 1
+              fi
+            done
 
             cp "$ELF_PATH" "dist/${FW_NAME}.elf"
-            if [ -f "$MAP_PATH" ]; then
-              cp "$MAP_PATH" "dist/${FW_NAME}.map"
-            fi
+            cp "$MAP_PATH" "dist/${FW_NAME}.map"
 
             "$OBJCOPY_BIN" -O ihex "$ELF_PATH" "dist/${FW_NAME}.hex"
             "$OBJCOPY_BIN" -O binary "$ELF_PATH" "dist/${FW_NAME}.bin"
@@ -99,37 +109,30 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: github.event_name == 'push'
-    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [format, host-tests, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: release metadata
-        id: meta
-        shell: bash
-        run: |
-          DATE_UTC="$(date -u +'%Y-%m-%d')"
-          SHORT_SHA="$(echo "${GITHUB_SHA}" | cut -c1-7)"
-          echo "release_name=${DATE_UTC}" >> "$GITHUB_OUTPUT"
-          echo "tag_name=release-${DATE_UTC}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
-
       - name: download firmware artifact
         uses: actions/download-artifact@v4
         with:
           name: firmware-${{ github.sha }}
           path: dist
 
-      - name: publish release
+      - name: checksums
+        run: cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
+
+      # A draft: the release text is added by hand before it is published.
+      - name: create the draft release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ steps.meta.outputs.release_name }}
-          tag_name: ${{ steps.meta.outputs.tag_name }}
-          target_commitish: ${{ github.sha }}
-          generate_release_notes: true
+          draft: true
           files: |
             dist/*.elf
             dist/*.hex
             dist/*.bin
             dist/*.map
             dist/*.tar.gz
+            dist/SHA256SUMS

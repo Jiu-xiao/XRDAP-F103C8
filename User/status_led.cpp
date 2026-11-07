@@ -38,7 +38,7 @@ void StatusLed::Show(const Light::Frame& frame)
 void StatusLed::SetRed(uint32_t permille)
 {
   const uint32_t top = TIM1->ARR;
-  const uint32_t ccr = (top + 1U) * permille / 1000U;
+  const uint32_t ccr = (top + 1U) * permille / kPermilleFull;
   TIM1->CCR2 = (ccr > top) ? top : ccr;
 }
 
