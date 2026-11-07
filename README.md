@@ -70,12 +70,12 @@ openocd -f interface/cmsis-dap.cfg -c "adapter serial XRobot-XRDAP-<UID>" -f tar
 
 Windows 上 probe-rs 0.32.0 及更早的版本列不出这块探针：它是只有一个接口的 USB 设备，这些版本只在复合设备上读接口名，认不出 CMSIS-DAP。probe-rs 主分支已经修好（[probe-rs#4500](https://github.com/probe-rs/probe-rs/pull/4500)），0.32.0 之后的版本可用；pyOCD、OpenOCD 不受影响。
 
-`xrdap list` 列出探针：
+`xrdap` 需要 XRDAP-Host 0.6.0 或更新的版本，因为这个固件的厂商扩展是协议版本 2。`xrdap list` 列出探针：
 
 ```
 $ xrdap list
 XRobot-XRDAP-<UID>  XR-DAP-F103 CMSIS-DAP
-    USB XRobot-XRDAP-<UID>    --probe usb:XRobot-XRDAP-<UID>
+    USB XRobot-XRDAP-<UID>    -p usb:XRobot-XRDAP-<UID>
 ```
 
 `xrdap info` 显示 DAP_Info、厂商扩展的能力，以及目标的 DPIDR 和内核（下面只摘了探针部分）：
@@ -85,8 +85,9 @@ $ xrdap info -p <UID 末尾几位>
 连接：USB XRobot-XRDAP-<UID>
 探针：XRobot XR-DAP-F103，序列号 XRobot-XRDAP-<UID>，固件 0.6.0+g<提交>
 CMSIS-DAP：2.0.0，包长 512 字节，最多 4 个包在途
-厂商扩展：版本 1，功能 READ、WRITE、采样、8 字节访问（0x0F）
+厂商扩展：版本 2，功能 READ、WRITE、采样、8 字节访问（0x4F）
   每次最多 32 个条目，最多 8 级指针，采样缓冲 4096 字节
+  探针时间 <秒数> s
 ```
 
 `xrdap read`、`write` 按 ELF（带 `-g` 调试信息）里的变量名读写目标内存。下面的目标程序 `app.elf` 中有全局变量 `counter` 和结构体 `state`：
@@ -151,7 +152,10 @@ ctest --test-dir build-test
 | `User/probe_info.*` | 探针身份（DAP_Info、USB 序列号） |
 | `User/status_led.*` | 状态灯（PA9、TIM1） |
 | `User/led_drive.hpp` | 状态灯规则的一帧换成这颗双色灯的亮灭和红色占比，不依赖硬件 |
+| `User/f1_gpio.hpp` | SWD 用的寄存器级 GPIO |
+| `User/chip_uid.hpp` | 芯片的 96 位唯一标识，用作序列号里的 UID |
+| `User/xrdap_port.hpp` | XRDAP-Core 的平台部分：采样缓冲的大小 |
 | `test/` | 电脑上的测试 |
-| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core 子模块：XR 厂商扩展、会话与命令执行、状态灯规则、探针身份、SWD 用的寄存器级 GPIO |
+| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core 子模块：XR 厂商扩展、会话与命令执行、状态灯规则、探针身份 |
 | `Core/`、`Drivers/` | STM32CubeMX 生成的初始化代码和 HAL |
 | `Middlewares/Third_Party/LibXR` | libxr 子模块 |
