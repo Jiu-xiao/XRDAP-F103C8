@@ -24,6 +24,12 @@
 #include "tick_timer.hpp"
 #include "xrdap/activity/dap_activity.hpp"
 #include "xrdap/light/status_light.hpp"
+
+// chip_uid.hpp 和 f1_gpio.hpp 带进 CMSIS，要在 stm32_usb_fsdev.hpp 之后：CMSIS 的 USB
+// 宏和命名空间 LibXR::USB 同名，stm32_usb_fsdev.hpp 读过这个宏之后取消它的定义。
+// chip_uid.hpp and f1_gpio.hpp bring in CMSIS and have to come after stm32_usb_fsdev.hpp:
+// the CMSIS USB macro has the name of the namespace LibXR::USB, and stm32_usb_fsdev.hpp
+// undefines it once it has read it.
 #include "chip_uid.hpp"
 #include "f1_gpio.hpp"
 #include "xrdap/probe/family.hpp"
