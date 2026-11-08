@@ -2,64 +2,49 @@
 
 [中文](README.md)
 
-CMSIS-DAP v2 debug probe firmware for STLINK V2 style STM32F103 boards, built on [libxr](https://github.com/xrobot-org/libxr) and part of the XR-DAP family (see also [XRDAP-ESP](https://github.com/Jiu-xiao/XRDAP-ESP)). Keil, pyOCD, probe-rs and OpenOCD use it as a standard CMSIS-DAP probe. The firmware also implements the XR vendor extension: one command reads or writes many addresses, follows pointer chains, and samples target variables on the probe at a fixed period, which the host tool [XRDAP-Host](https://github.com/Jiu-xiao/XRDAP-Host) (`xrdap`) shows and plots.
+XRDAP-F103C8 is CMSIS-DAP v2 debug probe firmware for STLINK V2 style STM32F103 boards, built on [libxr](https://github.com/xrobot-org/libxr) and part of the XR-DAP family. Keil, pyOCD, probe-rs and OpenOCD use it as an ordinary CMSIS-DAP probe. The firmware also implements the XR vendor extension, with which the host tool of [XRDAP-Host](https://github.com/Jiu-xiao/XRDAP-Host) reads and writes variables and has the probe sample them at a fixed period. The code shared by the XR-DAP probes is in [XRDAP-Core](https://github.com/Jiu-xiao/XRDAP-Core).
 
-The whole firmware fits the 64 KB flash of an STM32F103C8.
-
-## Hardware
+## Boards
 
 ### STLINK V2 standard board
+
 ![STLINK V2 standard board](imgs/stlink2.png)
 
 ### STLINK V2 aluminium-case board
+
 ![STLINK V2 aluminium-case board](imgs/stlink1.png)
 
-The probe MCU is an `STM32F103C8` or a pin-compatible F103 part (for example `APM32F103C8`) with at least 64 KB of flash.
+The probe MCU is an STM32F103C8 or a pin-compatible F103 part (for example the APM32F103C8) with at least 64 KB of flash and 20 KB of RAM.
 
-| Pin | Function |
+| Pin | Use |
 |---|---|
-| `PB13` | SWCLK |
-| `PB14` | SWDIO |
-| `PB6` | nRESET (open-drain output, released by default and held high by the board's pull-up; pulled low only when the debug tool asks for a reset) |
-| `PA9` | Status light (red/blue, PA9 high lights red, low lights blue) |
-| `PA11` / `PA12` | USB D- / D+ |
+| PB13 | SWCLK |
+| PB14 | SWDIO |
+| PB6 | Target reset (nRESET), open-drain output, released by default and pulled low when the debug tool asks for a reset |
+| PA9 | Status light, red and blue, red when high, blue when low |
+| PA11, PA12 | USB D-, D+ |
 
-The STLINK V2 standard board usually has no pull-up on SWDIO; it relies on the target's pull-up, or an external pull-up between SWDIO and 3.3V. Powering or replugging the probe does not reset the target.
+Where the STLINK V2 standard board has no pull-up on SWDIO, the target board pulls it up, or an external pull-up goes between SWDIO and 3.3V. The status light is described in [docs/boards.en.md](docs/boards.en.md).
 
-### Status light
+## Flashing and updates
 
-The colours follow the status light rule shared by the XR-DAP family ([XRDAP-Core](https://github.com/Jiu-xiao/XRDAP-Core)): red for a wired (USB) link, blue for a wireless link and purple for no link. This probe has USB only; its status light shows the states below. "Connected" and "running" are reported by the debug tool through DAP_HostStatus and are cleared by DAP_Disconnect or after 5 seconds without any DAP command.
+Every release has the files below:
 
-| State | Light |
-|---|---|
-| Power-up | one sweep between red and blue |
-| USB not yet configured by a computer (for example on a power supply only) | solid purple |
-| USB connected, idle | solid red |
-| Debug tool connected | red and purple back and forth every 2 seconds |
-| Target running | red and blue back and forth every second |
-| Every DAP command | off for about 30 ms, about 15 times a second under steady traffic |
-
-## Flashing the firmware
-
-Each release provides these files:
-
-| File | Content | Use |
+| File | Contents | Chips |
 |---|---|---|
-| `xrdap-f103c8-72m.bin`, `xrdap-f103c8-72m.hex` | Firmware with a 72 MHz system clock | Works on both STM32F103C8 and APM32F103C8 |
-| `xrdap-f103c8-96m.bin`, `xrdap-f103c8-96m.hex` | Firmware with a 96 MHz system clock | Only for APM32F103C8 and other compatible parts that run above 72 MHz; not a genuine STM32F103 (72 MHz at most, and no 48 MHz USB clock from 96 MHz) |
-| `SHA256SUMS` | Checksums of the four files above | Checking the downloaded files |
+| `xrdap-f103c8-72m.bin`, `xrdap-f103c8-72m.hex` | Firmware with a 72 MHz system clock | STM32F103C8, APM32F103C8 |
+| `xrdap-f103c8-96m.bin`, `xrdap-f103c8-96m.hex` | Firmware with a 96 MHz system clock | APM32F103C8 and other compatible parts that run at 96 MHz |
+| `SHA256SUMS` | Checksums of these four files | |
 
-The `.bin` and `.hex` of one clock hold the same content in two formats; the one to use depends on the flashing tool.
+The `.bin` and `.hex` of one clock hold the same firmware; the flashing tool decides which one to use. The two clocks are compared in [docs/boards.en.md](docs/boards.en.md). With the downloaded files and `SHA256SUMS` in one directory, `sha256sum -c --ignore-missing SHA256SUMS` prints `OK` for each downloaded file that matches the release.
 
-The F103 has no bootloader and no web update page, so the first flash and every update need another SWD debug probe. It writes the firmware to `0x08000000` through the board's SWD port (the SWCLK, SWDIO, GND and 3.3V pads), for example a J-Link:
+The first flashing and every update go through another SWD debug probe: it is wired to the SWD port of the board's own MCU (the SWCLK, SWDIO, GND and 3.3V pads) and writes the firmware to `0x08000000`. For example with a J-Link and OpenOCD:
 
 ```
 openocd -f interface/jlink.cfg -c "transport select swd" -f target/stm32f1x.cfg -c "program xrdap-f103c8-72m.bin 0x08000000 verify reset exit"
 ```
 
-To check the downloaded files, put them in one directory with `SHA256SUMS` and run `sha256sum -c --ignore-missing SHA256SUMS`; `OK` for each downloaded file means it matches the release.
-
-Once USB is plugged in, the probe enumerates as `1D50:6199` with the product name `XR-DAP-F103 CMSIS-DAP`. Its serial number is `XRobot-XRDAP-` followed by the chip UID in upper-case hex (written `XRobot-XRDAP-<UID>` below), the same serial that DAP_Info reports. The DAP_Info firmware version is the version number plus the commit it was built from, for example `0.6.0+g1a2b3c4`. On Linux, access as a normal user needs a udev rule:
+On the computer the probe is the USB device `1D50:6199` with the product name `XR-DAP-F103 CMSIS-DAP` and the serial `XRobot-XRDAP-` followed by the chip UID in upper-case hex, the same serial that DAP_Info reports. On Linux this udev rule gives ordinary users access to the probe:
 
 ```
 SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="6199", MODE="0666"
@@ -67,82 +52,40 @@ SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="6199", MODE="0666"
 
 ## Usage
 
-Debug tools use it as a CMSIS-DAP v2 probe, for example OpenOCD:
+Debug tools use the probe as a CMSIS-DAP v2 probe and, with several probes connected, select it by its serial, for example OpenOCD:
 
 ```
 openocd -f interface/cmsis-dap.cfg -c "adapter serial XRobot-XRDAP-<UID>" -f target/<target>.cfg
 ```
 
-On Windows, probe-rs 0.32.0 and earlier do not list this probe: it is a USB device with a single interface, and these versions read interface names only on composite devices, so they do not recognise it as CMSIS-DAP. The probe-rs main branch has the fix ([probe-rs#4500](https://github.com/probe-rs/probe-rs/pull/4500)); releases after 0.32.0 work. pyOCD and OpenOCD are not affected.
+On Windows, probe-rs 0.32.0 and earlier read interface names only on composite USB devices and do not list this single-interface probe; the fix is [probe-rs#4500](https://github.com/probe-rs/probe-rs/pull/4500), and releases after 0.32.0 work.
 
-`xrdap` needs XRDAP-Host 0.6.0 or later, because the vendor extension of this firmware is protocol version 2. `xrdap list` lists the probes:
+## Reading and sampling variables
 
-```
-$ xrdap list
-XRobot-XRDAP-<UID>  XR-DAP-F103 CMSIS-DAP
-    USB XRobot-XRDAP-<UID>    -p usb:XRobot-XRDAP-<UID>
-```
-
-`xrdap info` shows DAP_Info, the capabilities of the vendor extension, and the target's DPIDR and core (only the probe part is shown below; `xrdap` prints Chinese text):
+With the XR vendor extension one command reads or writes several addresses and follows pointer chains, and the probe samples variables at a fixed period that does not depend on the USB round trip. `read`, `write` and `watch` of the host tool `xrdap` use these commands and need [XRDAP-Host](https://github.com/Jiu-xiao/XRDAP-Host) 0.6.0 or later (protocol version 2 of the vendor extension):
 
 ```
-$ xrdap info -p <last digits of the UID>
-连接：USB XRobot-XRDAP-<UID>
-探针：XRobot XR-DAP-F103，序列号 XRobot-XRDAP-<UID>，固件 0.6.0+g<commit>
-CMSIS-DAP：2.0.0，包长 512 字节，最多 4 个包在途
-厂商扩展：版本 2，功能 READ、WRITE、采样、8 字节访问（0x4F）
-  每次最多 32 个条目，最多 8 级指针，采样缓冲 4096 字节
-  探针时间 <seconds> s
+xrdap read --elf app.elf motor.speed motor.state
+xrdap write --elf app.elf motor.mode=2
+xrdap watch --elf app.elf motor.speed motor.current --period 1ms --csv log.csv
 ```
 
-`xrdap read` and `write` access target memory by variable name from an ELF built with `-g`. The target program `app.elf` below has a global `counter` and a struct `state`:
-
-```
-$ xrdap read -p <last digits of the UID> --elf app.elf counter state
-counter        = 16342240 (0x00F95CE0)
-state.ticks    = 21079 (0x00005257)
-state.wave     = 0.6699997
-state.step     = 1 (0x0001)
-state.flags[0] = 1 (0x01)
-state.flags[1] = 2 (0x02)
-state.flags[2] = 3 (0x03)
-state.flags[3] = 4 (0x04)
-
-$ xrdap write -p <last digits of the UID> --elf app.elf 'state.flags[2]=9'
-state.flags[2] ← 9，读回 9 (0x09)
-```
-
-`xrdap watch` samples on the probe at a fixed period; `@10` samples a variable every 10th tick. The run below samples for 2 seconds at 1 ms:
-
-```
-$ xrdap watch -p <last digits of the UID> --elf app.elf counter state.wave state.ticks@10 --period 1ms --duration 2 --csv w.csv
-已停止：2001 帧，用时 2.00 s；探针跳过节拍 0，缓冲丢帧 0，帧序号缺口 0，读取失败的值 0
-```
-
-Each row of `w.csv` is one frame: time, tick number and the value of each variable; cells not due in that tick are empty.
-
-## Vendor extension
-
-The vendor extension code comes from [XRDAP-Core](https://github.com/Jiu-xiao/XRDAP-Core); see commands 0x80 to 0x85 in section 3 of its [protocol document](https://github.com/Jiu-xiao/XRDAP-Core/blob/main/docs/protocol.en.md). This firmware differs from the ESP version as follows:
-
-- USB is the only transport, and there is no 0x86 Wi-Fi command. Sampling belongs to the USB debug session, which ends on DAP_Disconnect or a USB bus reset (a replug, or the computer resetting the device); sampling stops with it.
-- The sampling buffer is 4096 bytes (limited by the 20 KB of RAM), with at most 32 items per frame.
-- TIM2 makes the ticks (1 us resolution) and the main loop runs the sampling: after each tick it handles one pending DAP command, then checks whether TIM2 counted another tick.
+This firmware runs these commands over USB, with a 4096-byte sampling buffer and at most 32 items per frame. Sampling stops when `xrdap watch` ends; a USB bus reset (the probe unplugged, or the computer resetting the device) ends the connection on USB and its sampling. The command formats are in section 3 of XRDAP-Core's [`docs/protocol.en.md`](https://github.com/Jiu-xiao/XRDAP-Core/blob/main/docs/protocol.en.md).
 
 ## Building
 
-Building uses GCC ([Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) 14.2), CMake and Ninja:
+Building needs CMake 3.22 or newer, Ninja and the [Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) 14.2 (`arm-none-eabi-gcc` on `PATH`). The `Release` preset in `CMakePresets.json` builds the 72 MHz and the 96 MHz firmware:
 
 ```
 git clone --recursive https://github.com/Jiu-xiao/XRDAP-F103C8.git
 cd XRDAP-F103C8
 cmake --preset Release
-cmake --build build/Release
+cmake --build --preset Release
 ```
 
-Each of `build/Release/XRDAP_F103C8_clock_72m/` and `build/Release/XRDAP_F103C8_clock_96m/` then holds an `XRDAP-F103C8.elf`.
+The firmware is `build/Release/XRDAP_F103C8_clock_72m/XRDAP-F103C8.elf` and `build/Release/XRDAP_F103C8_clock_96m/XRDAP-F103C8.elf`. CI builds in the `ghcr.io/xrobot-org/docker-image-stm32` container, makes the `.bin` and `.hex` with objcopy, and creates a draft release when a `v*` tag is pushed.
 
-The hardware-independent parts (for now the colour conversion of the status light) have host tests built with the system compiler:
+The colour conversion of the status light has tests on the computer, built with the system's GCC:
 
 ```
 cmake -S test -B build-test
@@ -150,17 +93,21 @@ cmake --build build-test
 ctest --test-dir build-test
 ```
 
+The version is the `VERSION` of `project()` in `CMakeLists.txt`; the build appends the commit, for example `0.6.0+g1a2b3c4`, and DAP_Info reports it.
+
+## Directories
+
 | Path | Contents |
 |---|---|
 | `User/app_main.cpp` | USB device, DAP instance and main loop |
 | `User/tick_timer.*` | Sampling tick timer (TIM2) |
-| `User/probe_info.*` | Probe identity (DAP_Info, USB serial) |
-| `User/status_led.*` | Status light (PA9, TIM1) |
-| `User/led_drive.hpp` | One frame of the status light rule to on/off and red share of this two-colour light, without hardware |
+| `User/status_led.*`, `User/led_drive.hpp` | Status light (PA9, PWM of TIM1) and its colour conversion |
+| `User/probe_info.hpp`, `User/chip_uid.hpp` | Probe identity: product name, firmware version, the chip UID used in the serial |
 | `User/f1_gpio.hpp` | Register-level GPIO for SWD |
-| `User/chip_uid.hpp` | The chip's 96-bit unique id, used as the UID in the serial number |
 | `User/xrdap_port.hpp` | Platform part of XRDAP-Core: the size of the sampling buffer |
-| `test/` | Host tests |
-| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core submodule: XR vendor extension, session and command execution, status light rule, probe identity |
-| `Core/`, `Drivers/` | STM32CubeMX-generated initialization code and HAL |
+| `Core/`, `Drivers/` | STM32CubeMX-generated initialization code (including the two clock settings) and HAL |
+| `cmake/` | Toolchain file, CubeMX-generated CMake files, libxr integration |
+| `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core submodule |
 | `Middlewares/Third_Party/LibXR` | libxr submodule |
+| `test/` | Tests on the computer |
+| `docs/` | Clocks and status light |
