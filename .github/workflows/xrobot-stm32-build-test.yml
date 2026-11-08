@@ -72,7 +72,7 @@ jobs:
             FW_DIR="build/XRDAP_F103C8_clock_${MODE}"
             ELF_PATH="${FW_DIR}/XRDAP-F103C8.elf"
             MAP_PATH="${FW_DIR}/XRDAP_F103C8.map"
-            FW_NAME="XRDAP-F103C8-${MODE}"
+            FW_NAME="xrdap-f103c8-${MODE}"
 
             for FILE in "$ELF_PATH" "$MAP_PATH"; do
               if [ ! -f "$FILE" ]; then
@@ -88,14 +88,6 @@ jobs:
             "$OBJCOPY_BIN" -O binary "$ELF_PATH" "dist/${FW_NAME}.bin"
           done
 
-          # A PR ref name is "<n>/merge"; the slash cannot be part of a file name.
-          PKG_TAG="${GITHUB_REF_NAME:-snapshot}"
-          PKG_TAG="${PKG_TAG//\//-}"
-          PKG_NAME="XRDAP-F103C8-${PKG_TAG}.tar.gz"
-          TMP_PKG="${RUNNER_TEMP:-/tmp}/${PKG_NAME}"
-          tar -C dist --exclude='*.tar.gz' -czf "${TMP_PKG}" .
-          mv "${TMP_PKG}" "dist/${PKG_NAME}"
-
       - name: upload firmware artifact
         uses: actions/upload-artifact@v4
         with:
@@ -105,7 +97,6 @@ jobs:
             dist/*.hex
             dist/*.bin
             dist/*.map
-            dist/*.tar.gz
           if-no-files-found: error
 
   release:
@@ -121,18 +112,19 @@ jobs:
           name: firmware-${{ github.sha }}
           path: dist
 
-      - name: checksums
-        run: cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      # Only the .bin and .hex of each clock are released; the .elf and .map stay in the
+      # CI artifact.
+      - name: collect the release files
+        run: |
+          mkdir release
+          for MODE in 72m 96m; do
+            cp "dist/xrdap-f103c8-${MODE}.bin" "dist/xrdap-f103c8-${MODE}.hex" release/
+          done
+          cd release && sha256sum * > SHA256SUMS && cat SHA256SUMS
 
       # A draft: the release text is added by hand before it is published.
       - name: create the draft release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
-          files: |
-            dist/*.elf
-            dist/*.hex
-            dist/*.bin
-            dist/*.map
-            dist/*.tar.gz
-            dist/SHA256SUMS
+          files: release/*
