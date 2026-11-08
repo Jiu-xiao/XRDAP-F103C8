@@ -41,18 +41,23 @@ The colours follow the status light rule shared by the XR-DAP family ([XRDAP-Cor
 
 ## Flashing the firmware
 
-The release holds two images that differ only in the system clock:
+Each release provides these files:
 
-| Image | System clock | For |
+| File | Content | Use |
 |---|---|---|
-| `XRDAP-F103C8-72m.bin` | 72 MHz | STM32F103C8 |
-| `XRDAP-F103C8-96m.bin` | 96 MHz | APM32F103C8 and other compatible parts that run above 72 MHz; not a genuine STM32F103 (72 MHz at most, and no 48 MHz USB clock from 96 MHz) |
+| `xrdap-f103c8-72m.bin`, `xrdap-f103c8-72m.hex` | Firmware with a 72 MHz system clock | Works on both STM32F103C8 and APM32F103C8 |
+| `xrdap-f103c8-96m.bin`, `xrdap-f103c8-96m.hex` | Firmware with a 96 MHz system clock | Only for APM32F103C8 and other compatible parts that run above 72 MHz; not a genuine STM32F103 (72 MHz at most, and no 48 MHz USB clock from 96 MHz) |
+| `SHA256SUMS` | Checksums of the four files above | Checking the downloaded files |
 
-The firmware starts at `0x08000000` and is written through the board's own SWD port (the SWCLK, SWDIO, GND and 3.3V pads) with another debug probe, for example a J-Link:
+The `.bin` and `.hex` of one clock hold the same content in two formats; the one to use depends on the flashing tool.
+
+The F103 has no bootloader and no web update page, so the first flash and every update need another SWD debug probe. It writes the firmware to `0x08000000` through the board's SWD port (the SWCLK, SWDIO, GND and 3.3V pads), for example a J-Link:
 
 ```
-openocd -f interface/jlink.cfg -c "transport select swd" -f target/stm32f1x.cfg -c "program XRDAP-F103C8-72m.bin 0x08000000 verify reset exit"
+openocd -f interface/jlink.cfg -c "transport select swd" -f target/stm32f1x.cfg -c "program xrdap-f103c8-72m.bin 0x08000000 verify reset exit"
 ```
+
+To check the downloaded files, put them in one directory with `SHA256SUMS` and run `sha256sum -c --ignore-missing SHA256SUMS`; `OK` for each downloaded file means it matches the release.
 
 Once USB is plugged in, the probe enumerates as `1D50:6199` with the product name `XR-DAP-F103 CMSIS-DAP`. Its serial number is `XRobot-XRDAP-` followed by the chip UID in upper-case hex (written `XRobot-XRDAP-<UID>` below), the same serial that DAP_Info reports. The DAP_Info firmware version is the version number plus the commit it was built from, for example `0.6.0+g1a2b3c4`. On Linux, access as a normal user needs a udev rule:
 

@@ -41,18 +41,23 @@ STLINK V2 标准版的 SWDIO 上通常没有上拉电阻，需要目标板上拉
 
 ## 烧录固件
 
-Release 中有两个镜像，区别只在系统时钟：
+每个发布版本提供以下文件：
 
-| 镜像 | 系统时钟 | 适用 |
+| 文件 | 内容 | 用途 |
 |---|---|---|
-| `XRDAP-F103C8-72m.bin` | 72 MHz | STM32F103C8 |
-| `XRDAP-F103C8-96m.bin` | 96 MHz | APM32F103C8 等可超频的兼容型号；原版 STM32F103 不能用（最高 72 MHz，也得不到 USB 需要的 48 MHz） |
+| `xrdap-f103c8-72m.bin`、`xrdap-f103c8-72m.hex` | 系统时钟 72 MHz 的固件 | STM32F103C8 和 APM32F103C8 都可以使用 |
+| `xrdap-f103c8-96m.bin`、`xrdap-f103c8-96m.hex` | 系统时钟 96 MHz 的固件 | 只用于 APM32F103C8 等可超频的兼容型号；原版 STM32F103 不能用（最高 72 MHz，也得不到 USB 需要的 48 MHz） |
+| `SHA256SUMS` | 以上四个文件的校验和 | 校验下载的文件 |
 
-固件从 `0x08000000` 开始，通过板子上的 SWD 调试口（SWCLK、SWDIO、GND、3.3V 四个焊盘）用另一个调试器烧录，例如 J-Link：
+同一时钟的 `.bin` 和 `.hex` 内容相同，只是两种格式，按所用的烧录工具选择。
+
+F103 没有 bootloader，也没有网页升级，首次烧录和每次升级都需要另一个 SWD 调试器，通过板子上的 SWD 调试口（SWCLK、SWDIO、GND、3.3V 四个焊盘）把固件写到 `0x08000000`，例如用 J-Link：
 
 ```
-openocd -f interface/jlink.cfg -c "transport select swd" -f target/stm32f1x.cfg -c "program XRDAP-F103C8-72m.bin 0x08000000 verify reset exit"
+openocd -f interface/jlink.cfg -c "transport select swd" -f target/stm32f1x.cfg -c "program xrdap-f103c8-72m.bin 0x08000000 verify reset exit"
 ```
+
+校验下载的文件：把文件和 `SHA256SUMS` 放在同一目录，运行 `sha256sum -c --ignore-missing SHA256SUMS`，已下载的文件显示 `OK` 即与发布一致。
 
 烧录后插上 USB，探针以 `1D50:6199` 枚举，产品名 `XR-DAP-F103 CMSIS-DAP`，序列号为 `XRobot-XRDAP-` 加芯片 UID 的大写十六进制（下文写作 `XRobot-XRDAP-<UID>`），与 DAP_Info 中的序列号相同。DAP_Info 中的固件版本为版本号加构建所用的提交，例如 `0.6.0+g1a2b3c4`。Linux 下普通用户访问需要 udev 规则：
 
