@@ -12,8 +12,6 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
-add_link_options(-flto)
-
 # Define the build type
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
@@ -26,8 +24,34 @@ set(CMAKE_PROJECT_NAME XRDAP_F103C8)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 # Core project settings
-project(${CMAKE_PROJECT_NAME})
+project(${CMAKE_PROJECT_NAME} VERSION 0.6.0)
 message("Build type: " ${CMAKE_BUILD_TYPE})
+
+# Firmware version, reported in DAP_Info: the version above plus the commit it was built
+# from, e.g. 0.6.0+g9c0860c (".dirty" for uncommitted changes). A build from a copy
+# without .git passes the commit with -DXRDAP_GIT_REV=<short hash>[.dirty].
+if(NOT DEFINED XRDAP_GIT_REV)
+    execute_process(COMMAND git rev-parse --short=7 HEAD
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+                    OUTPUT_VARIABLE XRDAP_GIT_REV OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET RESULT_VARIABLE _git_result)
+    if(_git_result EQUAL 0)
+        execute_process(COMMAND git status --porcelain --untracked-files=no
+                        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+                        OUTPUT_VARIABLE _git_dirty OUTPUT_STRIP_TRAILING_WHITESPACE
+                        ERROR_QUIET)
+        if(_git_dirty)
+            string(APPEND XRDAP_GIT_REV ".dirty")
+        endif()
+    else()
+        set(XRDAP_GIT_REV "")
+    endif()
+endif()
+set(XRDAP_FIRMWARE_VERSION "${PROJECT_VERSION}")
+if(XRDAP_GIT_REV)
+    string(APPEND XRDAP_FIRMWARE_VERSION "+g${XRDAP_GIT_REV}")
+endif()
+message(STATUS "XR-DAP firmware version ${XRDAP_FIRMWARE_VERSION}")
 
 set(XR_CLOCK_MODE "72M" CACHE STRING "System clock mode: 72M or 96M")
 set_property(CACHE XR_CLOCK_MODE PROPERTY STRINGS 72M 96M)
@@ -71,6 +95,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     ${XR_CLOCK_MODE_DEFINE}
+    XRDAP_FIRMWARE_VERSION="${XRDAP_FIRMWARE_VERSION}"
     # Add user defined symbols
 )
 
@@ -94,6 +119,7 @@ function(xr_add_clock_build_target target_name clock_mode)
         -B ${_clock_build_dir}
         -G ${CMAKE_GENERATOR}
         -DXR_CLOCK_MODE=${clock_mode}
+        -DXRDAP_GIT_REV=${XRDAP_GIT_REV}
     )
 
     if(CMAKE_BUILD_TYPE)

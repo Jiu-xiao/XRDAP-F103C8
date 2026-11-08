@@ -1,4 +1,8 @@
 [submodule "Middlewares/Third_Party/LibXR"]
 	path = Middlewares/Third_Party/LibXR
 	url = https://github.com/xrobot-org/libxr.git
-	branch = feat/xrdap-serial-transport
+	branch = release/0.6-candidate
+[submodule "Middlewares/Third_Party/XRDAP-Core"]
+	path = Middlewares/Third_Party/XRDAP-Core
+	url = https://github.com/Jiu-xiao/XRDAP-Core.git
+	branch = main

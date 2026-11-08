@@ -31,14 +31,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+/* XR_CLOCK_MODE (72 or 96, MHz) comes from CMake (XR_CLOCK_MODE=72M/96M). */
 #define XR_CLOCK_MODE_72M 72
 #define XR_CLOCK_MODE_96M 96
 
-#ifndef XR_CLOCK_MODE
-#define XR_CLOCK_MODE XR_CLOCK_MODE_72M
-#endif
-
-/* APM32F103 extends USB prescaler to 2-bit USBDPSC[23:22]. */
+/* APM32F103 extends USB prescaler to 2-bit USBDPSC[23:22]. 96M is for APM32-class
+ * parts only: a genuine STM32F103 runs at most 72 MHz, bit 23 is reserved there, and its
+ * /1 or /1.5 USB prescaler cannot make 48 MHz from 96 MHz. */
 #ifndef RCC_CFGR_USBDPSC
 #define RCC_CFGR_USBDPSC (0x3UL << 22)
 #endif
@@ -328,25 +327,39 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, SWCLK_Pin|SWDIO_Pin|NRST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, SWCLK_Pin|SWDIO_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : SWCLK_Pin SWDIO_Pin NRST_Pin */
-  GPIO_InitStruct.Pin = SWCLK_Pin|SWDIO_Pin|NRST_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(NRST_GPIO_Port, NRST_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pins : SWCLK_Pin SWDIO_Pin */
+  GPIO_InitStruct.Pin = SWCLK_Pin|SWDIO_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : NRST_Pin */
+  GPIO_InitStruct.Pin = NRST_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(NRST_GPIO_Port, &GPIO_InitStruct);
+
   /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* D+ (PA12) has a fixed 1.5 kOhm pull-up on these boards, so the host would not see
+     a reset or a re-flash as a reconnect. Holding D+ low for 10 ms makes the host see a
+     disconnect and enumerate the probe again. PA12 is then released (input); the USB
+     peripheral takes the pin over once it is enabled. */
   GPIO_InitStruct.Pin = GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   HAL_Delay(10);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_SET);
-  HAL_Delay(10);
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
