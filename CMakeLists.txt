@@ -64,6 +64,42 @@ else()
     message(FATAL_ERROR "Unsupported XR_CLOCK_MODE=${XR_CLOCK_MODE}; expected 72M or 96M")
 endif()
 
+# Flash size of the part in KB. 64 fits every STM32F103C8. 128 is for parts whose flash
+# size register (0x1FFFF7E0) reads 128 KB, such as the STM32F103CB; that build compiles
+# C++ at -O3 instead of -Os (C stays at -Os) for faster DAP command handling. LTO is not
+# used: ld --wrap does not reach calls inside LTO objects.
+set(XR_FLASH_SIZE_KB "64" CACHE STRING "Flash size in KB: 64 or 128")
+set_property(CACHE XR_FLASH_SIZE_KB PROPERTY STRINGS 64 128)
+
+if(NOT XR_FLASH_SIZE_KB MATCHES "^(64|128)$")
+    message(FATAL_ERROR "Unsupported XR_FLASH_SIZE_KB=${XR_FLASH_SIZE_KB}; expected 64 or 128")
+endif()
+
+if(XR_FLASH_SIZE_KB STREQUAL "128")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g0")
+endif()
+message(STATUS "XR-DAP flash size ${XR_FLASH_SIZE_KB} KB")
+
+# The linker script used is STM32F103XX_FLASH.ld with its FLASH length set to
+# XR_FLASH_SIZE_KB, written to the build directory.
+set(XR_LINKER_SCRIPT_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/STM32F103XX_FLASH.ld)
+set(XR_LINKER_SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/STM32F103XX_FLASH_${XR_FLASH_SIZE_KB}K.ld)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${XR_LINKER_SCRIPT_SOURCE})
+file(READ ${XR_LINKER_SCRIPT_SOURCE} _ld_text)
+set(_ld_flash_regex "(FLASH \\(rx\\)[ \t]*: ORIGIN = 0x8000000, LENGTH = )64K")
+if(NOT _ld_text MATCHES "${_ld_flash_regex}")
+    message(FATAL_ERROR "No 'FLASH (rx) ... LENGTH = 64K' line in ${XR_LINKER_SCRIPT_SOURCE}")
+endif()
+string(REGEX REPLACE "${_ld_flash_regex}" "\\1${XR_FLASH_SIZE_KB}K" _ld_text "${_ld_text}")
+if(EXISTS ${XR_LINKER_SCRIPT})
+    file(READ ${XR_LINKER_SCRIPT} _ld_old_text)
+else()
+    set(_ld_old_text "")
+endif()
+if(NOT _ld_text STREQUAL _ld_old_text)
+    file(WRITE ${XR_LINKER_SCRIPT} "${_ld_text}")
+endif()
+
 # Enable CMake support for ASM and C languages
 enable_language(C ASM)
 
@@ -72,7 +108,9 @@ add_executable(${CMAKE_PROJECT_NAME})
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
     OUTPUT_NAME "XRDAP-F103C8"
     EXCLUDE_FROM_ALL TRUE
+    LINK_DEPENDS ${XR_LINKER_SCRIPT}
 )
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE "-T${XR_LINKER_SCRIPT}")
 
 # Add STM32CubeMX generated sources
 add_subdirectory(cmake/stm32cubemx)
@@ -119,6 +157,7 @@ function(xr_add_clock_build_target target_name clock_mode)
         -B ${_clock_build_dir}
         -G ${CMAKE_GENERATOR}
         -DXR_CLOCK_MODE=${clock_mode}
+        -DXR_FLASH_SIZE_KB=${XR_FLASH_SIZE_KB}
         -DXRDAP_GIT_REV=${XRDAP_GIT_REV}
     )
 
@@ -150,7 +189,7 @@ function(xr_add_clock_build_target target_name clock_mode)
         COMMAND ${CMAKE_COMMAND} ${_cfg_args}
         COMMAND ${CMAKE_COMMAND} --build ${_clock_build_dir} --target ${CMAKE_PROJECT_NAME}
         USES_TERMINAL
-        COMMENT "Build ${CMAKE_PROJECT_NAME} with XR_CLOCK_MODE=${clock_mode}"
+        COMMENT "Build ${CMAKE_PROJECT_NAME} with XR_CLOCK_MODE=${clock_mode}, XR_FLASH_SIZE_KB=${XR_FLASH_SIZE_KB}"
     )
 endfunction()
 

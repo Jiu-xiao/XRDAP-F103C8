@@ -2,7 +2,7 @@
 
 [English](boards.en.md)
 
-本文说明 XRDAP-F103C8 的两种系统时钟和状态灯，引脚见 [README](../README.md)。探针是 USB 全速设备 `1D50:6199`，bcdDevice 为 `0x0400`（XRDAP-Core 的 `xrdap/probe/family.hpp`），只有一个 CMSIS-DAP v2 接口；DAP 包长 512 字节，DAP 包数为 4（DAP_Info 报告），采样缓冲 4096 字节（厂商扩展的 INFO 报告）。
+本文说明 XRDAP-F103C8 的两种系统时钟、两种 Flash 大小和状态灯，引脚见 [README](../README.md)。探针是 USB 全速设备 `1D50:6199`，bcdDevice 为 `0x0400`（XRDAP-Core 的 `xrdap/probe/family.hpp`），只有一个 CMSIS-DAP v2 接口；DAP 包长 512 字节，DAP 包数为 4（DAP_Info 报告），采样缓冲 4096 字节（厂商扩展的 INFO 报告）。
 
 ## 系统时钟
 
@@ -13,9 +13,23 @@
 | `xrdap-f103c8-72m` | 8 MHz × 9 = 72 MHz | 72 MHz ÷ 1.5 = 48 MHz |
 | `xrdap-f103c8-96m` | 8 MHz × 12 = 96 MHz | 96 MHz ÷ 2 = 48 MHz |
 
+`xrdap-f103cb-72m`、`xrdap-f103cb-96m` 的时钟设置分别与 `xrdap-f103c8-72m`、`xrdap-f103c8-96m` 相同。
+
 STM32F103 的最高主频为 72 MHz，USB 分频系数只有 1 和 1.5，因此使用 72 MHz 的固件。APM32F103 可以运行在 96 MHz，USB 分频位扩展为两位（RCC_CFGR 的 USBDPSC[23:22]），可以二分频，因此两种固件都可以使用。时钟设置在 `Core/Src/main.c` 的 `XR_ApplyClockProfile()` 中。
 
 SWD 由 GPIO 软件产生，时序按 CPU 周期标定（`User/app_main.cpp` 中的 `kSwdTiming`），SWD 的速度与系统时钟成正比。
+
+## Flash 大小
+
+`xrdap-f103c8-*` 按 64 KB Flash 编译，C 和 C++ 代码都为 `-Os`。`xrdap-f103cb-*` 按 128 KB Flash 编译（CMake 选项 `XR_FLASH_SIZE_KB=128`），C 代码为 `-Os`，C++ 代码为 `-O3`，处理 DAP 命令更快，镜像约 100 KB，需要 Flash 大小寄存器 `0x1FFFF7E0` 读出 128 KB 的芯片。
+
+下表是 0.6.0 固件下 OpenOCD 0.12.0 经本探针（SWD，`adapter speed 30000`）向 STM32H723 的 SRAM（`0x24000000`）写入 128 KiB（`load_image`）和读出 128 KiB（`dump_image`）的用时：
+
+| 固件 | 写入 | 读出 |
+|---|---|---|
+| `xrdap-f103c8-72m` | 0.62 s | 0.62 s |
+| `xrdap-f103cb-72m` | 0.48 s | 0.47 s |
+| `xrdap-f103cb-96m` | 0.36 s | 0.36 s |
 
 ## 状态灯
 

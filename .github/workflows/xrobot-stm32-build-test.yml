@@ -48,17 +48,23 @@ jobs:
       - name: mark workspace safe
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      # One build per flash size: 64 KB (xrdap-f103c8-*) and 128 KB (xrdap-f103cb-*).
       - name: configure cmake
         run: |
           export PATH="${GCC_TOOLCHAIN_ROOT}:${PATH}"
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_TOOLCHAIN_FILE:STRING=cmake/gcc-arm-none-eabi.cmake \
-            -DCMAKE_BUILD_TYPE:STRING=Release
+          for FLASH_KB in 64 128; do
+            cmake -S . -B "build-${FLASH_KB}k" -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE:STRING=cmake/gcc-arm-none-eabi.cmake \
+              -DCMAKE_BUILD_TYPE:STRING=Release \
+              -DXR_FLASH_SIZE_KB:STRING=${FLASH_KB}
+          done
 
       - name: build
         run: |
           export PATH="${GCC_TOOLCHAIN_ROOT}:${PATH}"
-          cmake --build build --parallel
+          for FLASH_KB in 64 128; do
+            cmake --build "build-${FLASH_KB}k" --parallel
+          done
 
       - name: package firmware
         shell: bash
@@ -68,24 +74,38 @@ jobs:
 
           OBJCOPY_BIN="${GCC_TOOLCHAIN_ROOT}/arm-none-eabi-objcopy"
 
-          for MODE in 72m 96m; do
-            FW_DIR="build/XRDAP_F103C8_clock_${MODE}"
-            ELF_PATH="${FW_DIR}/XRDAP-F103C8.elf"
-            MAP_PATH="${FW_DIR}/XRDAP_F103C8.map"
-            FW_NAME="xrdap-f103c8-${MODE}"
+          for FLASH_KB in 64 128; do
+            case "$FLASH_KB" in
+              64) PART=c8 ;;
+              128) PART=cb ;;
+            esac
 
-            for FILE in "$ELF_PATH" "$MAP_PATH"; do
-              if [ ! -f "$FILE" ]; then
-                echo "Missing build output: $FILE"
+            for MODE in 72m 96m; do
+              FW_DIR="build-${FLASH_KB}k/XRDAP_F103C8_clock_${MODE}"
+              ELF_PATH="${FW_DIR}/XRDAP-F103C8.elf"
+              MAP_PATH="${FW_DIR}/XRDAP_F103C8.map"
+              FW_NAME="xrdap-f103${PART}-${MODE}"
+
+              for FILE in "$ELF_PATH" "$MAP_PATH"; do
+                if [ ! -f "$FILE" ]; then
+                  echo "Missing build output: $FILE"
+                  exit 1
+                fi
+              done
+
+              cp "$ELF_PATH" "dist/${FW_NAME}.elf"
+              cp "$MAP_PATH" "dist/${FW_NAME}.map"
+
+              "$OBJCOPY_BIN" -O ihex "$ELF_PATH" "dist/${FW_NAME}.hex"
+              "$OBJCOPY_BIN" -O binary "$ELF_PATH" "dist/${FW_NAME}.bin"
+
+              BIN_SIZE=$(stat -c %s "dist/${FW_NAME}.bin")
+              echo "${FW_NAME}.bin: ${BIN_SIZE} bytes, flash ${FLASH_KB} KB"
+              if [ "$BIN_SIZE" -gt $((FLASH_KB * 1024)) ]; then
+                echo "${FW_NAME}.bin does not fit in ${FLASH_KB} KB"
                 exit 1
               fi
             done
-
-            cp "$ELF_PATH" "dist/${FW_NAME}.elf"
-            cp "$MAP_PATH" "dist/${FW_NAME}.map"
-
-            "$OBJCOPY_BIN" -O ihex "$ELF_PATH" "dist/${FW_NAME}.hex"
-            "$OBJCOPY_BIN" -O binary "$ELF_PATH" "dist/${FW_NAME}.bin"
           done
 
       - name: upload firmware artifact
@@ -112,13 +132,15 @@ jobs:
           name: firmware-${{ github.sha }}
           path: dist
 
-      # Only the .bin and .hex of each clock are released; the .elf and .map stay in the
-      # CI artifact.
+      # Only the .bin and .hex of each flash size and clock are released; the .elf and
+      # .map stay in the CI artifact.
       - name: collect the release files
         run: |
           mkdir release
-          for MODE in 72m 96m; do
-            cp "dist/xrdap-f103c8-${MODE}.bin" "dist/xrdap-f103c8-${MODE}.hex" release/
+          for PART in c8 cb; do
+            for MODE in 72m 96m; do
+              cp "dist/xrdap-f103${PART}-${MODE}.bin" "dist/xrdap-f103${PART}-${MODE}.hex" release/
+            done
           done
           cd release && sha256sum * > SHA256SUMS && cat SHA256SUMS
 
