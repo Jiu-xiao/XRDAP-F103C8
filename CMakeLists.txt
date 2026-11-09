@@ -24,7 +24,7 @@ set(CMAKE_PROJECT_NAME XRDAP_F103C8)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 # Core project settings
-project(${CMAKE_PROJECT_NAME} VERSION 0.6.0)
+project(${CMAKE_PROJECT_NAME} VERSION 0.6.1)
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
 # Firmware version, reported in DAP_Info: the version above plus the commit it was built
