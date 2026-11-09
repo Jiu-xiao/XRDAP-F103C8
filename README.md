@@ -76,6 +76,17 @@ xrdap watch --elf app.elf motor.speed motor.current --period 1ms --csv log.csv
 
 本固件经 USB 执行这些命令，采样缓冲为 4096 字节，一帧最多 32 个条目。`xrdap watch` 结束时停止采样；USB 总线复位（拔出探针或电脑复位设备）时，USB 上的连接和采样随之结束。命令格式见 XRDAP-Core 的 [`docs/protocol.md`](https://github.com/Jiu-xiao/XRDAP-Core/blob/main/docs/protocol.md) 第 3 节。
 
+## 性能
+
+下表为四种固件的测量结果：`xrdap-f103c8-*` 为 0.6.0，`xrdap-f103cb-*` 为 0.6.1。主机为 Windows 11，目标为 STM32H723，测试程序为 XRDAP-Core 的 [`tests/`](https://github.com/Jiu-xiao/XRDAP-Core/tree/main/tests)（bce599e）。四种固件在 SWD 请求 30 MHz 时读写全部正确，各项在这一请求下测量。小变量读写是用厂商扩展命令读、写一个 4 字节 SRAM 变量的往返时间中位数；块读写在 SRAM 中写入、读出 16 KiB，流水读同时有 4 个请求在途；OpenOCD 一列是 OpenOCD 0.12.0 向目标 SRAM（`0x24000000`）写入、读出 128 KiB 的用时；采样周期是 `xrdap watch` 采样 8 个 SRAM 变量、连续 60 s 不跳拍不丢帧的最短周期。
+
+| 固件 | 小变量读 / 写 | 块写 / 读 / 流水读 | OpenOCD 写 / 读 128 KiB | 8 个变量采样最短周期 |
+|---|---|---|---|---|
+| `xrdap-f103c8-72m` | 309 µs / 未测 | 150 / 171 / 212 KiB/s | 0.62 / 0.62 s | 600 µs |
+| `xrdap-f103c8-96m` | 252 / 269 µs | 179 / 215 / 275 KiB/s | 未测 / 0.47 s | 500 µs |
+| `xrdap-f103cb-72m` | 262 µs / 未测 | 178 / 199 / 271 KiB/s | 0.48 / 0.47 s | 未测 |
+| `xrdap-f103cb-96m` | 256 µs / 未测 | 200 / 235 / 333 KiB/s | 0.36 / 0.36 s | 未测 |
+
 ## 编译
 
 编译需要 CMake 3.22 以上、Ninja 和 [Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) 14.2（`arm-none-eabi-gcc` 在 `PATH` 中）。`CMakePresets.json` 中的 `Release` preset 编出 72 MHz 和 96 MHz 两种固件：
