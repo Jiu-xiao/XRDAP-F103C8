@@ -34,9 +34,13 @@ STLINK V2 标准版的 SWDIO 上没有上拉电阻时，由目标板上拉，或
 |---|---|---|
 | `xrdap-f103c8-72m.bin`、`xrdap-f103c8-72m.hex` | 系统时钟 72 MHz 的固件 | STM32F103C8、APM32F103C8 |
 | `xrdap-f103c8-96m.bin`、`xrdap-f103c8-96m.hex` | 系统时钟 96 MHz 的固件 | APM32F103C8 等可运行在 96 MHz 的兼容型号 |
-| `SHA256SUMS` | 以上四个文件的校验和 | |
+| `xrdap-f103cb-72m.bin`、`xrdap-f103cb-72m.hex` | 系统时钟 72 MHz、按 128 KB Flash 编译的固件 | Flash 为 128 KB 的芯片，例如 STM32F103CB |
+| `xrdap-f103cb-96m.bin`、`xrdap-f103cb-96m.hex` | 系统时钟 96 MHz、按 128 KB Flash 编译的固件 | Flash 为 128 KB、可运行在 96 MHz 的兼容型号 |
+| `SHA256SUMS` | 以上八个文件的校验和 | |
 
 同一时钟的 `.bin` 和 `.hex` 内容相同，按烧录工具选用其一；两种时钟的区别见 [docs/boards.md](docs/boards.md)。把下载的文件和 `SHA256SUMS` 放在同一目录，运行 `sha256sum -c --ignore-missing SHA256SUMS`，每个已下载的文件显示 `OK` 即与发布一致。
+
+`xrdap-f103cb-*` 的 C++ 代码按速度优化编译，处理 DAP 命令更快，OpenOCD 和 `xrdap` 的读写速度高于 `xrdap-f103c8-*`，但只适用于 Flash 大小寄存器（`0x1FFFF7E0`，单位 KB）读出 128 KB 的芯片，例如 STM32F103CB，以及读出 128 KB 的 C8 芯片；其他芯片使用 `xrdap-f103c8-*`。这个寄存器可以用 J-Link 的 `mem16 0x1FFFF7E0 1` 或 OpenOCD 的 `mdh 0x1FFFF7E0` 读取，`0080` 为 128 KB，`0040` 为 64 KB。用 J-Link 等按芯片型号确定 Flash 大小的工具烧录 `xrdap-f103cb-*` 时，芯片型号设为 STM32F103CB，型号设为 STM32F103C8 的工具可能拒绝写入 64 KB 以上的地址。两种 Flash 大小的比较见 [docs/boards.md](docs/boards.md)。
 
 第一次烧录和每次升级都由另一个 SWD 调试器完成：调试器接板上 MCU 自己的 SWD 调试口（SWCLK、SWDIO、GND、3.3V 四个焊盘），把固件写到 `0x08000000`。以 J-Link 和 OpenOCD 为例：
 
@@ -83,7 +87,14 @@ cmake --preset Release
 cmake --build --preset Release
 ```
 
-固件在 `build/Release/XRDAP_F103C8_clock_72m/XRDAP-F103C8.elf` 和 `build/Release/XRDAP_F103C8_clock_96m/XRDAP-F103C8.elf`。CI 在 `ghcr.io/xrobot-org/docker-image-stm32` 容器中编译，用 objcopy 生成 `.bin` 和 `.hex`，推送 `v*` 标签时生成发布草稿。
+固件在 `build/Release/XRDAP_F103C8_clock_72m/XRDAP-F103C8.elf` 和 `build/Release/XRDAP_F103C8_clock_96m/XRDAP-F103C8.elf`。CMake 选项 `XR_FLASH_SIZE_KB` 为 Flash 大小，默认 64；设为 128 时编出 `xrdap-f103cb-*` 对应的固件，C 代码仍为 `-Os`，C++ 代码为 `-O3`，链接脚本的 FLASH 长度为 128 KB：
+
+```
+cmake --preset Release -B build/Release-128k -DXR_FLASH_SIZE_KB=128
+cmake --build build/Release-128k
+```
+
+CI 在 `ghcr.io/xrobot-org/docker-image-stm32` 容器中编译两种 Flash 大小，用 objcopy 生成 `.bin` 和 `.hex`，推送 `v*` 标签时生成发布草稿。
 
 状态灯的灯色换算有电脑上的测试，用系统的 GCC 编译：
 
@@ -110,4 +121,4 @@ ctest --test-dir build-test
 | `Middlewares/Third_Party/XRDAP-Core` | XRDAP-Core 子模块 |
 | `Middlewares/Third_Party/LibXR` | libxr 子模块 |
 | `test/` | 电脑上的测试 |
-| `docs/` | 时钟和状态灯的说明 |
+| `docs/` | 时钟、Flash 大小和状态灯的说明 |
