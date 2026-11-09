@@ -82,10 +82,10 @@ The table shows measurements of the four images: `xrdap-f103c8-*` from 0.6.0, `x
 
 | Image | Small variable read / write | Block write / read / pipelined read | OpenOCD write / read, 128 KiB | Shortest period, 8 variables |
 |---|---|---|---|---|
-| `xrdap-f103c8-72m` | 309 µs / not measured | 150 / 171 / 212 KiB/s | 0.62 / 0.62 s | 600 µs |
+| `xrdap-f103c8-72m` | 309 / 335 µs | 150 / 171 / 212 KiB/s | 0.62 / 0.62 s | 600 µs |
 | `xrdap-f103c8-96m` | 252 / 269 µs | 179 / 215 / 275 KiB/s | not measured / 0.47 s | 500 µs |
-| `xrdap-f103cb-72m` | 262 µs / not measured | 178 / 199 / 271 KiB/s | 0.48 / 0.47 s | not measured |
-| `xrdap-f103cb-96m` | 256 µs / not measured | 200 / 235 / 333 KiB/s | 0.36 / 0.36 s | not measured |
+| `xrdap-f103cb-72m` | 262 / 259 µs | 178 / 199 / 271 KiB/s | 0.48 / 0.47 s | not measured |
+| `xrdap-f103cb-96m` | 256 / 264 µs | 200 / 235 / 333 KiB/s | 0.36 / 0.36 s | not measured |
 
 ## Building
 
