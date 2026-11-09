@@ -76,6 +76,19 @@ xrdap watch --elf app.elf motor.speed motor.current --period 1ms --csv log.csv
 
 This firmware runs these commands over USB, with a 4096-byte sampling buffer and at most 32 items per frame. Sampling stops when `xrdap watch` ends; a USB bus reset (the probe unplugged, or the computer resetting the device) ends the connection on USB and its sampling. The command formats are in section 3 of XRDAP-Core's [`docs/protocol.en.md`](https://github.com/Jiu-xiao/XRDAP-Core/blob/main/docs/protocol.en.md).
 
+## Performance
+
+The table shows measurements of the four images: `xrdap-f103c8-*` from 0.6.0, `xrdap-f103cb-*` from 0.6.1. The host runs Windows 11, the target is an STM32H723, and the test program is XRDAP-Core's [`tests/`](https://github.com/Jiu-xiao/XRDAP-Core/tree/main/tests) (bce599e). All four images read and write correctly with an SWD request of 30 MHz, and every item is measured at that request. Small variable read / write is the median round trip of reading and writing one 4-byte SRAM variable with the vendor extension commands; block transfers write and read 16 KiB of SRAM, and the pipelined read keeps 4 requests in flight; the OpenOCD column is the time OpenOCD 0.12.0 takes to write and read 128 KiB of target SRAM (`0x24000000`); the sampling period is the shortest at which `xrdap watch` samples 8 SRAM variables for 60 s without skipped ticks or lost frames.
+
+| Image | Small variable read / write | Block write / read / pipelined read | OpenOCD write / read, 128 KiB | Shortest period, 8 variables |
+|---|---|---|---|---|
+| `xrdap-f103c8-72m` | 309 / 335 µs | 150 / 171 / 212 KiB/s | 0.62 / 0.62 s | 600 µs |
+| `xrdap-f103c8-96m` | 252 / 269 µs | 179 / 215 / 275 KiB/s | not measured / 0.47 s | 500 µs |
+| `xrdap-f103cb-72m` | 262 / 259 µs | 178 / 199 / 271 KiB/s | 0.48 / 0.47 s | 350 µs (3 s run) |
+| `xrdap-f103cb-96m` | 256 / 264 µs | 200 / 235 / 333 KiB/s | 0.36 / 0.36 s | 250 µs (3 s run) |
+
+The two cells marked "3 s run" are the shortest period sampled for 3 s without skipped ticks or lost frames.
+
 ## Building
 
 Building needs CMake 3.22 or newer, Ninja and the [Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) 14.2 (`arm-none-eabi-gcc` on `PATH`). The `Release` preset in `CMakePresets.json` builds the 72 MHz and the 96 MHz firmware:
