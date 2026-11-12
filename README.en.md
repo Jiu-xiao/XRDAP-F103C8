@@ -4,6 +4,8 @@
 
 XRDAP-F103C8 is CMSIS-DAP v2 debug probe firmware for STLINK V2 style STM32F103 boards, built on [libxr](https://github.com/xrobot-org/libxr) and part of the XR-DAP family. Keil, pyOCD, probe-rs and OpenOCD use it as an ordinary CMSIS-DAP probe. The firmware also implements the XR vendor extension, with which the host tool of [XRDAP-Host](https://github.com/Jiu-xiao/XRDAP-Host) reads and writes variables and has the probe sample them at a fixed period. The code shared by the XR-DAP probes is in [XRDAP-Core](https://github.com/Jiu-xiao/XRDAP-Core).
 
+An introduction video of the XR-DAP family is on [YouTube](https://youtu.be/H6S_sdkS8vs).
+
 ## Boards
 
 ### STLINK V2 standard board
